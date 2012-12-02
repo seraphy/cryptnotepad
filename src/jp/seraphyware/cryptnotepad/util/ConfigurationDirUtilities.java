@@ -98,7 +98,7 @@ public final class ConfigurationDirUtilities {
 			}
 			if (applicationBaseDir == null) {
 				// 明示的に指定されていない場合はコードの実行位置から割り出す.
-				URL codeBaseUrl = getClassLocation(ConfigurationDirUtilities.class);
+				URL codeBaseUrl = getClassLocation(Main.class);
 				if (codeBaseUrl == null) {
 					throw new RuntimeException("コード位置が取得できません");
 				}

@@ -2,10 +2,15 @@ package jp.seraphyware.cryptnotepad.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Container;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyVetoException;
+import java.io.File;
+import java.util.LinkedList;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,11 +23,19 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 
 import jp.seraphyware.cryptnotepad.Main;
+import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
+
+/**
+ * メインフレーム
+ * @author seraphy
+ */
 public class MainFrame extends JFrame {
 
 	private static final long serialVersionUID = 8358190990080417295L;
@@ -36,6 +49,11 @@ public class MainFrame extends JFrame {
 	 * リソースバンドル
 	 */
 	private ResourceBundle resource;
+	
+	/**
+	 * MDIフレーム(デスクトップ)
+	 */
+	private JDesktopPane desktop;
 
 	/**
 	 * コンストラクタ
@@ -67,35 +85,46 @@ public class MainFrame extends JFrame {
 		// タイトル
 		setTitle(resource.getString("mainframe.title"));
 		
+		// MDIフレーム
+		desktop = new JDesktopPane();
+		desktop.setBackground(Color.lightGray);
+
 		// レイアウト
 		Container contentPane = getContentPane();
 		contentPane.setLayout(new BorderLayout());
 		
 		JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 		splitPane.setDividerLocation(200);
-		splitPane.setResizeWeight(0.2);
 		
 		splitPane.add(createFileTreePanel());
-		splitPane.add(createDesktopPane());
+		splitPane.add(desktop);
 		
 		contentPane.add(splitPane);
 	}
 	
-	private JDesktopPane createDesktopPane() {
-		JDesktopPane desktop = new JDesktopPane();
-		desktop.setBackground(Color.gray);
+	/**
+	 * MDI子ウィンドウを開く
+	 * @param file 対象ファイル
+	 * @return 生成された子ウィンドウ
+	 */
+	private JInternalFrame createChildFrame(File file) {
 		
-		JInternalFrame internalFrame = new JInternalFrame("doc");
+		JInternalFrame internalFrame = new JInternalFrame();
+
+		String title = file.getName();
+		internalFrame.setTitle(title);
+		
 		internalFrame.setMaximizable(true);
 		internalFrame.setResizable(true);
 		internalFrame.setIconifiable(true);
 		internalFrame.setClosable(true);
 		
-		internalFrame.setSize(100, 200);
-		internalFrame.setLocation(30, 30);
-		
-		internalFrame.setVisible(true);
 		desktop.add(internalFrame);
+
+		internalFrame.setSize(200, 200);
+		internalFrame.setLocation(0, 0);
+		internalFrame.setVisible(true);
+
 		try {
 			internalFrame.setMaximum(true);
 			
@@ -103,29 +132,83 @@ public class MainFrame extends JFrame {
 			logger.log(Level.FINE, ex.toString());
 		}
 		
-		return desktop;
+		return internalFrame;
 	}
 	
+	/**
+	 * ファイル一覧パネルを作成する.
+	 * @return
+	 */
 	private JPanel createFileTreePanel() {
+		
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBorder(BorderFactory.createTitledBorder("Files"));
 		
-		DefaultMutableTreeNode root = new DefaultMutableTreeNode();
+		File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
+		DefaultMutableTreeNode root = new DefaultMutableTreeNode(rootDir);
 		
-		for (int idx = 0; idx < 10; idx++) {
-			DefaultMutableTreeNode node = new DefaultMutableTreeNode();
-			node.setUserObject("idx:" + idx);
-			root.add(node);
-			for (int idx2 = 0; idx2 < 3; idx2++) {
-				DefaultMutableTreeNode node2 = new DefaultMutableTreeNode();
-				node2.setUserObject("idx2:" + idx2);
-				node.add(node2);
+		LinkedList<DefaultMutableTreeNode> queue = new LinkedList<DefaultMutableTreeNode>();
+		queue.add(root);
+		
+		while (!queue.isEmpty()) {
+			DefaultMutableTreeNode dirNode = queue.pop();
+			File dir = (File)dirNode.getUserObject();
+			
+			for (File file : dir.listFiles()) {
+				DefaultMutableTreeNode node = new DefaultMutableTreeNode(file);
+				dirNode.add(node);
+				
+				if (file.isDirectory()) {
+					queue.push(node);
+				}
 			}
 		}
 		
-		JTree tree = new JTree(root);
+		final DefaultTreeModel model = new DefaultTreeModel(root);
+		final JTree tree = new JTree(model);
 		tree.setRootVisible(false);
 		panel.add(tree);
+		
+		
+		DefaultTreeCellRenderer treeCellRenderer = new DefaultTreeCellRenderer() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Component getTreeCellRendererComponent(JTree tree,
+					Object value, boolean sel, boolean expanded, boolean leaf,
+					int row, boolean hasFocus) {
+				
+				if (value instanceof DefaultMutableTreeNode) {
+					DefaultMutableTreeNode node = (DefaultMutableTreeNode)value;
+					File file = (File)node.getUserObject();
+					value = file.getName();
+				}
+				
+				return super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf,
+						row, hasFocus);
+			}
+		};
+		tree.setCellRenderer(treeCellRenderer);
+		
+		tree.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getClickCount() == 2) {
+					// ダブルクリックの場合
+					TreePath select = tree.getSelectionPath();
+					if (select != null) {
+						Object[] path = select.getPath();
+						if (path != null && path.length > 0) {
+							DefaultMutableTreeNode node = (DefaultMutableTreeNode) path[path.length - 1];
+							File file = (File) node.getUserObject();
+							if (!file.isDirectory()) {
+								createChildFrame(file);
+							}
+						}
+					}
+				}
+			}
+		});
 		
 		return panel;
 	}
