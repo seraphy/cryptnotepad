@@ -1,0 +1,8 @@
+Main-Class: jp.seraphyware.cryptnotepad.Main
+Specification-Title: cryptnotepad
+Specification-Version: 1.0
+Specification-Vendor: seraphyware.jp
+Implementation-Title: cryptnotepad
+Implementation-Version: 1.0
+Implementation-URL: 
+Implementation-Vendor: seraphyware.jp
