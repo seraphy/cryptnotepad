@@ -1,6 +1,11 @@
-<?xml version="1.0" encoding="Shift_JIS" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
   <comment />
-  <entry key="mainframe.title">CryptNotepad</entry>
+  <entry key="mainframe.title">MultiNotepad</entry>
+  <entry key="files.border.title">Files</entry>
+  <entry key="settings.button.title">Settings</entry>
+  <entry key="new.button.title">New</entry>
+  <entry key="delete.button.title">Delete</entry>
+  <entry key="password.button.title">Pass</entry>
 </properties>

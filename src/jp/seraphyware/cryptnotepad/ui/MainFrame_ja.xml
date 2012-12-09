@@ -1,6 +1,11 @@
-<?xml version="1.0" encoding="Shift_JIS" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
   <comment />
-  <entry key="mainframe.title">�Í�������</entry>
+  <entry key="mainframe.title">マルチノート</entry>
+  <entry key="files.border.title">ファイル一覧</entry>
+  <entry key="settings.button.title">設定</entry>
+  <entry key="new.button.title">新規</entry>
+  <entry key="delete.button.title">削除</entry>
+  <entry key="password.button.title">パス</entry>
 </properties>
