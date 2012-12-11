@@ -1,0 +1,226 @@
+package jp.seraphyware.cryptnotepad.ui;
+
+import java.awt.BorderLayout;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
+import javax.swing.InputMap;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+
+import jp.seraphyware.cryptnotepad.Main;
+import jp.seraphyware.cryptnotepad.model.SettingsModel;
+import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
+
+/**
+ * 設定ダイアログ.
+ * 
+ * @author seraphy
+ */
+public class SettingsDialog extends JDialog {
+
+	private static final long serialVersionUID = -8017941806888773490L;
+
+	/**
+     * ロガー.<br>
+     */
+    private static final Logger logger = Logger.getLogger(Main.class.getName());
+
+    /**
+     * リソースバンドル
+     */
+    private ResourceBundle resource;
+    
+    /**
+     * モデル
+     */
+    private SettingsModel model = null;
+
+    public SettingsDialog(JFrame parent) {
+		super(parent);
+		setModalityType(ModalityType.APPLICATION_MODAL);
+        try {
+            resource = ResourceBundle.getBundle(getClass().getName(),
+                    XMLResourceBundle.CONTROL);
+            init();
+
+        } catch (RuntimeException ex) {
+            dispose();
+            throw ex;
+        }
+	}
+    
+    private JTextField txtEncoding;
+    
+    private JPasswordField txtPassphrase;
+    
+    private JTextField txtKeyFile;
+    
+    private void init() {
+    	setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+    	addWindowListener(new WindowAdapter() {
+    		@Override
+    		public void windowClosing(WindowEvent e) {
+    			onCancel();
+    		}
+    	});
+    	
+    	txtEncoding = new JTextField();
+    	txtPassphrase = new JPasswordField();
+    	txtKeyFile = new JTextField();
+    	
+    	Dimension passphraseSize = txtPassphrase.getPreferredSize();
+    	passphraseSize.width = 250;
+    	txtPassphrase.setPreferredSize(passphraseSize);
+    	
+    	setTitle(resource.getString("settingDialog.title"));
+    	
+    	Container contentPane = getContentPane();
+    	contentPane.setLayout(new BorderLayout());
+    	
+    	JPanel pnl = new JPanel();
+    	GridBagLayout gbl = new GridBagLayout();
+    	GridBagConstraints gbc = new GridBagConstraints();
+    	pnl.setLayout(gbl);
+    	pnl.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
+    	
+    	gbc.gridheight = 1;
+    	gbc.gridwidth = 1;
+    	gbc.ipadx = 2;
+    	gbc.ipady = 2;
+    	gbc.fill = GridBagConstraints.BOTH;
+    	
+    	gbc.gridx = 0;
+    	gbc.gridy = 0;
+    	gbc.weightx = 0;
+    	gbc.anchor = GridBagConstraints.EAST;
+    	pnl.add(new JLabel(resource.getString("label.encoding.text")), gbc);
+    	
+    	gbc.gridx = 1;
+    	gbc.gridy = 0;
+    	gbc.weightx = 1.;
+    	gbc.anchor = GridBagConstraints.WEST;
+    	pnl.add(txtEncoding, gbc);
+
+    	gbc.gridx = 0;
+    	gbc.gridy = 1;
+    	gbc.weightx = 0;
+    	gbc.anchor = GridBagConstraints.EAST;
+    	pnl.add(new JLabel(resource.getString("label.passphrase.text")), gbc);
+
+    	gbc.gridx = 1;
+    	gbc.gridy = 1;
+    	gbc.weightx = 1.;
+    	gbc.anchor = GridBagConstraints.WEST;
+    	pnl.add(txtPassphrase, gbc);
+
+    	gbc.gridx = 0;
+    	gbc.gridy = 2;
+    	gbc.weightx = 0;
+    	gbc.anchor = GridBagConstraints.EAST;
+    	pnl.add(new JLabel(resource.getString("label.keyfile.text")), gbc);
+    	
+    	gbc.gridx = 1;
+    	gbc.gridy = 2;
+    	gbc.weightx = 1.;
+    	gbc.anchor = GridBagConstraints.WEST;
+    	pnl.add(txtKeyFile, gbc);
+
+    	AbstractAction actOK = new AbstractAction(
+				resource.getString("button.ok.text")) {
+			private static final long serialVersionUID = 1L;
+			@Override
+    		public void actionPerformed(ActionEvent e) {
+    			onOK();
+    		}
+    	};
+		AbstractAction actCancel = new AbstractAction(
+				resource.getString("button.cancel.text")) {
+			private static final long serialVersionUID = 1L;
+    		@Override
+    		public void actionPerformed(ActionEvent e) {
+    			onCancel();
+    		}
+    	};
+    	
+    	JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    	JButton btnOK = new JButton(actOK);
+    	JButton btnCancel = new JButton(actCancel);
+    	
+    	btnPanel.add(btnOK);
+    	btnPanel.add(btnCancel);
+    	
+    	getRootPane().setDefaultButton(btnOK);
+    	
+    	ActionMap am = getRootPane().getActionMap();
+    	InputMap im = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+    	im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actCancel);
+    	am.put(actCancel,  actCancel);
+    	
+    	contentPane.add(pnl, BorderLayout.CENTER);
+    	contentPane.add(btnPanel, BorderLayout.SOUTH);
+    	
+    	update(false);
+    	
+    	pack();
+    }
+    
+    protected void update(boolean save) {
+		if (model == null) {
+			return;
+		}
+    	if (save) {
+    		model.setEncoding(txtEncoding.getText());
+    		model.setKeyFile(txtKeyFile.getText());
+    		model.setPassphrase(txtPassphrase.getPassword());
+
+    	} else {
+    		txtEncoding.setText(model.getEncoding());
+    		txtKeyFile.setText(model.getKeyFile());
+    	}
+    }
+    
+    public void setModel(SettingsModel model) {
+		this.model = model;
+		update(false);
+	}
+    
+    public SettingsModel getModel() {
+    	return model;
+    }
+	
+    protected void onOK() {
+    	if (model == null) {
+    		logger.log(Level.WARNING, "model missing");
+    		return;
+    	}
+    	update(true);
+    	logger.log(Level.FINE, "ok model=" + model);
+    	dispose();
+    }
+    
+    protected void onCancel() {
+    	logger.log(Level.FINE, "cancel model=" + model);
+    	dispose();
+    }
+}

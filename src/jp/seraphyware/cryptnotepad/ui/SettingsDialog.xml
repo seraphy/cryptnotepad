@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment />
+  <entry key="settingDialog.title">Settings</entry>
+  <entry key="button.ok.text">OK</entry>
+  <entry key="button.cancel.text">Cancel</entry>
+  <entry key="label.encoding.text">Encoding</entry>
+  <entry key="label.passphrase.text">Passphrase</entry>
+  <entry key="label.keyfile.text">Keyfile</entry>
+</properties>

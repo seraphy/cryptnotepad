@@ -173,7 +173,7 @@ public class MainFrame extends JFrame {
 			private static final long serialVersionUID = 1L;
 			@Override
         	public void actionPerformed(ActionEvent e) {
-        		onManage();
+        		onSettings();
         	}
         });
 		
@@ -213,8 +213,10 @@ public class MainFrame extends JFrame {
         return leftPanel;
     }
     
-    protected void onManage() {
-    	JOptionPane.showMessageDialog(this, "Manage");
+    protected void onSettings() {
+    	SettingsDialog dlg = new SettingsDialog(this);
+    	dlg.setLocationRelativeTo(this);
+    	dlg.setVisible(true);
     }
     
     protected void onNew() {
