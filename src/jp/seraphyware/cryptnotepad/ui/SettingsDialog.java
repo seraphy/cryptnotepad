@@ -70,12 +70,24 @@ public class SettingsDialog extends JDialog {
         }
 	}
     
+    /**
+     * 文字コード
+     */
     private JTextField txtEncoding;
     
+    /**
+     * パスフレーズ
+     */
     private JPasswordField txtPassphrase;
     
+    /**
+     * キーファイル
+     */
     private JTextField txtKeyFile;
-    
+
+    /**
+     * レイアウトなど初期化
+     */
     private void init() {
     	setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     	addWindowListener(new WindowAdapter() {
@@ -184,7 +196,12 @@ public class SettingsDialog extends JDialog {
     	
     	pack();
     }
-    
+
+    /**
+     * 画面を更新する.
+     * モデルが設定されていない場合は何もしない.
+     * @param save
+     */
     protected void update(boolean save) {
 		if (model == null) {
 			return;
@@ -200,15 +217,26 @@ public class SettingsDialog extends JDialog {
     	}
     }
     
+    /**
+     * モデルを設定する.(参照渡し)
+     * @param model
+     */
     public void setModel(SettingsModel model) {
 		this.model = model;
 		update(false);
 	}
     
+    /**
+     * モデルデータを取得する.(参照渡し)
+     * @return モデルデータ
+     */
     public SettingsModel getModel() {
     	return model;
     }
 	
+    /**
+     * OKハンドラ
+     */
     protected void onOK() {
     	if (model == null) {
     		logger.log(Level.WARNING, "model missing");
@@ -218,7 +246,10 @@ public class SettingsDialog extends JDialog {
     	logger.log(Level.FINE, "ok model=" + model);
     	dispose();
     }
-    
+
+    /**
+     * キャンセルハンドラ
+     */
     protected void onCancel() {
     	logger.log(Level.FINE, "cancel model=" + model);
     	dispose();
