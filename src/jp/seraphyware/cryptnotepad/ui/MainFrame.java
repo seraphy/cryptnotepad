@@ -26,9 +26,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
-import jp.seraphyware.cryptnotepad.Main;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
-
 
 /**
  * メインフレーム
@@ -42,7 +40,8 @@ public class MainFrame extends JFrame {
     /**
      * ロガー.<br>
      */
-    private static final Logger logger = Logger.getLogger(Main.class.getName());
+    private static final Logger logger = Logger
+            .getLogger(TextInternalFrame.class.getName());
 
     /**
      * リソースバンドル
@@ -53,7 +52,7 @@ public class MainFrame extends JFrame {
      * MDIフレーム(デスクトップ)
      */
     private JDesktopPane desktop;
-    
+
     /**
      * ファイルツリーパネル
      */
@@ -93,9 +92,9 @@ public class MainFrame extends JFrame {
         // MDIフレーム
         desktop = new JDesktopPane();
         desktop.setBackground(Color.lightGray);
-        
+
         // ファイル一覧パネル
-    	fileTreePanel = new FileTreePanel();
+        fileTreePanel = new FileTreePanel();
         JPanel leftPanel = createFileTreePanel(fileTreePanel);
 
         // レイアウト
@@ -120,16 +119,16 @@ public class MainFrame extends JFrame {
      */
     protected JInternalFrame createChildFrame(File file) {
 
-    	TextInternalFrame internalFrame = new TextInternalFrame(file);
+        TextInternalFrame internalFrame = new TextInternalFrame(file);
 
-		internalFrame.addPropertyChangeListener(
-				TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
-			@Override
-			public void propertyChange(PropertyChangeEvent evt) {
-				fileTreePanel.refresh();
-			}
-		});
-        
+        internalFrame.addPropertyChangeListener(
+                TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        fileTreePanel.refresh();
+                    }
+                });
+
         desktop.add(internalFrame);
 
         internalFrame.setSize(200, 200);
@@ -153,82 +152,86 @@ public class MainFrame extends JFrame {
      */
     private JPanel createFileTreePanel(final FileTreePanel fileTreePanel) {
 
-		fileTreePanel.setBorder(BorderFactory.createTitledBorder(resource
-				.getString("files.border.title")));
+        fileTreePanel.setBorder(BorderFactory.createTitledBorder(resource
+                .getString("files.border.title")));
 
         fileTreePanel.addActionListener(new ActionListener() {
-        	@Override
-        	public void actionPerformed(ActionEvent e) {
-        		File file = fileTreePanel.getSelectedFile();
-        		if (file != null) {
-        			createChildFrame(file);
-        		}
-        	}
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                File file = fileTreePanel.getSelectedFile();
+                if (file != null) {
+                    createChildFrame(file);
+                }
+            }
         });
-        
+
         final JPanel leftPanel = new JPanel(new BorderLayout());
-        
-		JButton btnSettings = new JButton(new AbstractAction(
-				resource.getString("settings.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-        	public void actionPerformed(ActionEvent e) {
-        		onSettings();
-        	}
+
+        JButton btnSettings = new JButton(new AbstractAction(
+                resource.getString("settings.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onSettings();
+            }
         });
-		
-		JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		JButton btnNew = new JButton(new AbstractAction(
-				resource.getString("new.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				onNew();
-			}
-		});
-		JButton btnDelete = new JButton(new AbstractAction(
-				resource.getString("delete.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				onDelete();
-			}
-		});
-		JButton btnChangePw = new JButton(new AbstractAction(
-				resource.getString("password.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				onChangePw();
-			}
-		});
-		btnPanel.add(btnNew);
-		btnPanel.add(btnDelete);
-		btnPanel.add(btnChangePw);
-        
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JButton btnNew = new JButton(new AbstractAction(
+                resource.getString("new.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onNew();
+            }
+        });
+        JButton btnDelete = new JButton(new AbstractAction(
+                resource.getString("delete.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onDelete();
+            }
+        });
+        JButton btnChangePw = new JButton(new AbstractAction(
+                resource.getString("password.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onChangePw();
+            }
+        });
+        btnPanel.add(btnNew);
+        btnPanel.add(btnDelete);
+        btnPanel.add(btnChangePw);
+
         leftPanel.add(btnSettings, BorderLayout.NORTH);
         leftPanel.add(fileTreePanel, BorderLayout.CENTER);
         leftPanel.add(btnPanel, BorderLayout.SOUTH);
 
         return leftPanel;
     }
-    
+
     protected void onSettings() {
-    	SettingsDialog dlg = new SettingsDialog(this);
-    	dlg.setLocationRelativeTo(this);
-    	dlg.setVisible(true);
+        SettingsDialog dlg = new SettingsDialog(this);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
     }
-    
+
     protected void onNew() {
-    	createChildFrame(null);
+        createChildFrame(null);
     }
-    
+
     protected void onDelete() {
-    	JOptionPane.showMessageDialog(this, "Delete");
+        JOptionPane.showMessageDialog(this, "Delete");
     }
 
     protected void onChangePw() {
-    	JOptionPane.showMessageDialog(this, "ChangePw");
+        JOptionPane.showMessageDialog(this, "ChangePw");
     }
 
     /**

@@ -48,240 +48,244 @@ import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
  */
 public class TextInternalFrame extends JInternalFrame {
 
-	private static final long serialVersionUID = -6664897509335391245L;
+    private static final long serialVersionUID = -6664897509335391245L;
 
-	public static final String PROPERTY_FILE = "file";
+    public static final String PROPERTY_FILE = "file";
 
-	public static final String PROPERTY_MODIFIED = "modified";
+    public static final String PROPERTY_MODIFIED = "modified";
 
-	/**
-	 * リソースバンドル
-	 */
-	private ResourceBundle resource;
+    /**
+     * リソースバンドル
+     */
+    private ResourceBundle resource;
 
-	/**
-	 * 対象ファイル、新規の場合はnull
-	 */
-	private File file;
-	
-	/**
-	 * テキストエリア
-	 */
-	private JTextArea area;
-	
-	/**
-	 * Undoマネージャ
-	 */
-	private UndoManager undoManager;
+    /**
+     * 対象ファイル、新規の場合はnull
+     */
+    private File file;
 
-	/**
-	 * 変更フラグ
-	 */
-	private boolean modified;
-	
-	
-	public TextInternalFrame(File file) {
-		this.resource = ResourceBundle.getBundle(getClass().getName(),
-				XMLResourceBundle.CONTROL);
-		this.file = file;
+    /**
+     * テキストエリア
+     */
+    private JTextArea area;
 
-		if (file != null) {
-			String title = file.getName();
-			setTitle(title);
+    /**
+     * Undoマネージャ
+     */
+    private UndoManager undoManager;
 
-		} else {
-			setTitle(resource.getString("notitled.title"));
-		}
+    /**
+     * 変更フラグ
+     */
+    private boolean modified;
 
-		setMaximizable(true);
-		setResizable(true);
-		setIconifiable(true);
-		setClosable(true);
+    public TextInternalFrame(File file) {
+        this.resource = ResourceBundle.getBundle(getClass().getName(),
+                XMLResourceBundle.CONTROL);
+        this.file = file;
 
-		StringWriter sw = new StringWriter();
-		if (file != null) {
-			PrintWriter pw = new PrintWriter(sw);
-			try {
-				loadText(file, pw);
+        if (file != null) {
+            String title = file.getName();
+            setTitle(title);
 
-			} catch (Exception ex) {
-				ex.printStackTrace(pw);
-			}
-			pw.flush();
-		}
+        } else {
+            setTitle(resource.getString("notitled.title"));
+        }
 
-		String doc = sw.toString();
+        setMaximizable(true);
+        setResizable(true);
+        setIconifiable(true);
+        setClosable(true);
 
-		this.area = new JTextArea();
-		this.area.getDocument().addDocumentListener(new DocumentListener() {
-			@Override
-			public void removeUpdate(DocumentEvent e) {
-				setModified(true);
-			}
-			@Override
-			public void insertUpdate(DocumentEvent e) {
-				setModified(true);
-			}
-			@Override
-			public void changedUpdate(DocumentEvent e) {
-				setModified(true);
-			}
-		});
-		
-		this.undoManager = new UndoManager();
-		
-		ActionMap am = this.area.getActionMap();
-		InputMap im = this.area.getInputMap(JComponent.WHEN_FOCUSED);
-		
-		AbstractAction actUndo = new AbstractAction("undo") {
-			private static final long serialVersionUID = 1L;
+        StringWriter sw = new StringWriter();
+        if (file != null) {
+            PrintWriter pw = new PrintWriter(sw);
+            try {
+                loadText(file, pw);
 
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				if (undoManager.canUndo()) {
-					undoManager.undo();
-				}
-			}
-		};
-		AbstractAction actRedo = new AbstractAction("redo") {
-			private static final long serialVersionUID = 1L;
+            } catch (Exception ex) {
+                ex.printStackTrace(pw);
+            }
+            pw.flush();
+        }
 
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				if (undoManager.canRedo()) {
-					undoManager.redo();
-				}
-			}
-		};
-		
-		im.put(KeyStroke.getKeyStroke('Z', Event.CTRL_MASK), actUndo);
-		am.put(actUndo, actUndo);
-		im.put(KeyStroke.getKeyStroke('Y', Event.CTRL_MASK), actRedo);
-		am.put(actRedo, actRedo);
-		
-		JScrollPane scr = new JScrollPane(area);
+        String doc = sw.toString();
 
-		JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		btnPanel.add(new JButton(new AbstractAction(resource
-				.getString("export.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				onExport();
-			}
-		}));
-		
-		final AbstractAction actSave = new AbstractAction(resource
-				.getString("save.button.title")) {
-			private static final long serialVersionUID = 1L;
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				try {
-					if (TextInternalFrame.this.file == null
-							|| (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-						// 新規ドキュメントであるか、シフトキーとともに押された場合
-						onSaveAs();
-					} else {
-						// 上書き保存
-						onSave();
-					}
-				} catch (Exception ex) {
-					ErrorMessageHelper.showErrorDialog(TextInternalFrame.this,
-							ex);
-				}
-			}
-		};
-		
-		btnPanel.add(new JButton(actSave));
+        this.area = new JTextArea();
+        this.area.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                setModified(true);
+            }
 
-		Container contentPane = getContentPane();
-		contentPane.setLayout(new BorderLayout());
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                setModified(true);
+            }
 
-		contentPane.add(scr, BorderLayout.CENTER);
-		contentPane.add(btnPanel, BorderLayout.SOUTH);
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                setModified(true);
+            }
+        });
 
-		area.setText(doc);
-		
-		this.area.getDocument().addUndoableEditListener(new UndoableEditListener() {
-			@Override
-			public void undoableEditHappened(UndoableEditEvent e) {
-				undoManager.addEdit(e.getEdit());
-			}
-		});
-		
-		setModified(false);
-		actSave.setEnabled(false);
+        this.undoManager = new UndoManager();
 
-		addPropertyChangeListener(PROPERTY_MODIFIED, new PropertyChangeListener() {
-			@Override
-			public void propertyChange(PropertyChangeEvent evt) {
-				actSave.setEnabled(isModified());
-			}
-		});
-	}
-	
-	public File getFile() {
-		return file;
-	}
+        ActionMap am = this.area.getActionMap();
+        InputMap im = this.area.getInputMap(JComponent.WHEN_FOCUSED);
 
-	private void loadText(File file, Writer wr) throws IOException {
-		Reader rd = new InputStreamReader(new FileInputStream(file), "UTF-8");
-		try {
-			int ch;
-			while ((ch = rd.read()) != -1) {
-				wr.append((char) ch);
-			}
+        AbstractAction actUndo = new AbstractAction("undo") {
+            private static final long serialVersionUID = 1L;
 
-		} finally {
-			rd.close();
-		}
-	}
-	
-	protected void onSave() throws IOException {
-		String doc = area.getText();
-		
-		Writer wr = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
-		try {
-			wr.write(doc);
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (undoManager.canUndo()) {
+                    undoManager.undo();
+                }
+            }
+        };
+        AbstractAction actRedo = new AbstractAction("redo") {
+            private static final long serialVersionUID = 1L;
 
-		} finally {
-			wr.close();
-		}
-		
-		setModified(false);
-	}
-	
-	public void setModified(boolean modified) {
-		boolean oldValue = this.modified;
-		this.modified = modified;
-		firePropertyChange(PROPERTY_MODIFIED, oldValue, modified);
-	}
-	
-	public boolean isModified() {
-		return modified;
-	}
-	
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (undoManager.canRedo()) {
+                    undoManager.redo();
+                }
+            }
+        };
 
-	protected void onSaveAs() throws IOException {
+        im.put(KeyStroke.getKeyStroke('Z', Event.CTRL_MASK), actUndo);
+        am.put(actUndo, actUndo);
+        im.put(KeyStroke.getKeyStroke('Y', Event.CTRL_MASK), actRedo);
+        am.put(actRedo, actRedo);
+
+        JScrollPane scr = new JScrollPane(area);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.add(new JButton(new AbstractAction(resource
+                .getString("export.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onExport();
+            }
+        }));
+
+        final AbstractAction actSave = new AbstractAction(
+                resource.getString("save.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    if (TextInternalFrame.this.file == null
+                            || (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                        // 新規ドキュメントであるか、シフトキーとともに押された場合
+                        onSaveAs();
+                    } else {
+                        // 上書き保存
+                        onSave();
+                    }
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(TextInternalFrame.this,
+                            ex);
+                }
+            }
+        };
+
+        btnPanel.add(new JButton(actSave));
+
+        Container contentPane = getContentPane();
+        contentPane.setLayout(new BorderLayout());
+
+        contentPane.add(scr, BorderLayout.CENTER);
+        contentPane.add(btnPanel, BorderLayout.SOUTH);
+
+        area.setText(doc);
+
+        this.area.getDocument().addUndoableEditListener(
+                new UndoableEditListener() {
+                    @Override
+                    public void undoableEditHappened(UndoableEditEvent e) {
+                        undoManager.addEdit(e.getEdit());
+                    }
+                });
+
+        setModified(false);
+        actSave.setEnabled(false);
+
+        addPropertyChangeListener(PROPERTY_MODIFIED,
+                new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        actSave.setEnabled(isModified());
+                    }
+                });
+    }
+
+    public File getFile() {
+        return file;
+    }
+
+    private void loadText(File file, Writer wr) throws IOException {
+        Reader rd = new InputStreamReader(new FileInputStream(file), "UTF-8");
+        try {
+            int ch;
+            while ((ch = rd.read()) != -1) {
+                wr.append((char) ch);
+            }
+
+        } finally {
+            rd.close();
+        }
+    }
+
+    protected void onSave() throws IOException {
+        String doc = area.getText();
+
+        Writer wr = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+        try {
+            wr.write(doc);
+
+        } finally {
+            wr.close();
+        }
+
+        setModified(false);
+    }
+
+    public void setModified(boolean modified) {
+        boolean oldValue = this.modified;
+        this.modified = modified;
+        firePropertyChange(PROPERTY_MODIFIED, oldValue, modified);
+    }
+
+    public boolean isModified() {
+        return modified;
+    }
+
+    protected void onSaveAs() throws IOException {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
-		JFileChooser fileChooser = new JFileChooser(rootDir);
-		int ret = fileChooser.showSaveDialog(this);
-		if (ret != JFileChooser.APPROVE_OPTION) {
-			// OK以外
-			return;
-		}
-		
-		File file = fileChooser.getSelectedFile();
+        JFileChooser fileChooser = new JFileChooser(rootDir);
+        int ret = fileChooser.showSaveDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            // OK以外
+            return;
+        }
 
-		File oldValue = this.file;
-		this.file = file;
-				
-		onSave();
-		
-		firePropertyChange(PROPERTY_FILE, oldValue, file);
-	}
-	
-	protected void onExport() {
-		JOptionPane.showMessageDialog(this, "export");
-	}
+        File file = fileChooser.getSelectedFile();
+
+        File oldValue = this.file;
+        this.file = file;
+
+        onSave();
+
+        firePropertyChange(PROPERTY_FILE, oldValue, file);
+    }
+
+    protected void onExport() {
+        JOptionPane.showMessageDialog(this, "export");
+    }
 }
