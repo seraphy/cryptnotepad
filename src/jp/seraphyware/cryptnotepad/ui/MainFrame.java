@@ -26,6 +26,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
+import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
@@ -49,6 +50,11 @@ public class MainFrame extends JFrame {
     private ResourceBundle resource;
 
     /**
+     * ドキュメントコントローラ
+     */
+    private DocumentController documentController;
+
+    /**
      * MDIフレーム(デスクトップ)
      */
     private JDesktopPane desktop;
@@ -61,8 +67,14 @@ public class MainFrame extends JFrame {
     /**
      * コンストラクタ
      */
-    public MainFrame() {
+    public MainFrame(DocumentController documentController) {
         try {
+            if (documentController == null) {
+                throw new IllegalArgumentException();
+            }
+
+            this.documentController = documentController;
+
             resource = ResourceBundle.getBundle(getClass().getName(),
                     XMLResourceBundle.CONTROL);
             init();
@@ -115,11 +127,18 @@ public class MainFrame extends JFrame {
      * 
      * @param file
      *            対象ファイル
-     * @return 生成された子ウィンドウ
+     * @return 生成された子ウィンドウ、生成できなければnull
      */
     protected JInternalFrame createChildFrame(File file) {
 
-        TextInternalFrame internalFrame = new TextInternalFrame(file);
+        if (!documentController.getSettingsModel().isValid()) {
+            String message = resource.getString("error.password.required");
+            JOptionPane.showMessageDialog(this, message);
+            return null;
+        }
+
+        TextInternalFrame internalFrame = new TextInternalFrame(
+                documentController);
 
         internalFrame.addPropertyChangeListener(
                 TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
@@ -141,6 +160,9 @@ public class MainFrame extends JFrame {
         } catch (PropertyVetoException ex) {
             logger.log(Level.FINE, ex.toString());
         }
+
+        // ファイルをロードする.
+        internalFrame.load(file);
 
         return internalFrame;
     }
@@ -217,9 +239,10 @@ public class MainFrame extends JFrame {
     }
 
     protected void onSettings() {
-        SettingsDialog dlg = new SettingsDialog(this);
-        dlg.setLocationRelativeTo(this);
-        dlg.setVisible(true);
+        SettingsDialog settingsDlg = new SettingsDialog(this);
+        settingsDlg.setLocationRelativeTo(this);
+        settingsDlg.setModel(documentController.getSettingsModel());
+        settingsDlg.setVisible(true);
     }
 
     protected void onNew() {
@@ -238,7 +261,8 @@ public class MainFrame extends JFrame {
      * 破棄する場合
      */
     protected void onClosing() {
+        documentController.dispose();
         dispose();
-        logger.log(Level.INFO, "dispose mainframe");
+        logger.log(Level.INFO, "disposed mainframe");
     }
 }

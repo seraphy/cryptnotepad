@@ -8,4 +8,5 @@
   <entry key="new.button.title">新規</entry>
   <entry key="delete.button.title">削除</entry>
   <entry key="password.button.title">パス</entry>
+  <entry key="error.password.required">パスフレーズが設定されていません.</entry>
 </properties>

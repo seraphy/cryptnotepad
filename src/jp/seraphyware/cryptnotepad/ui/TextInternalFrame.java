@@ -8,15 +8,7 @@ import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.ResourceBundle;
 
 import javax.swing.AbstractAction;
@@ -37,6 +29,7 @@ import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 
+import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
@@ -54,6 +47,11 @@ public class TextInternalFrame extends JInternalFrame {
 
     public static final String PROPERTY_MODIFIED = "modified";
 
+    /**
+     * ドキュメントコントローラ
+     */
+    private DocumentController documentController;
+    
     /**
      * リソースバンドル
      */
@@ -79,37 +77,28 @@ public class TextInternalFrame extends JInternalFrame {
      */
     private boolean modified;
 
-    public TextInternalFrame(File file) {
+    /**
+     * コンストラクタ
+     * @param documentController
+     * @param file
+     */
+    public TextInternalFrame(DocumentController documentController) {
+        if (documentController == null) {
+            dispose();
+            throw new IllegalArgumentException();
+        }
+        
+        this.documentController = documentController;
+        
         this.resource = ResourceBundle.getBundle(getClass().getName(),
                 XMLResourceBundle.CONTROL);
-        this.file = file;
 
-        if (file != null) {
-            String title = file.getName();
-            setTitle(title);
-
-        } else {
-            setTitle(resource.getString("notitled.title"));
-        }
+        updateTitle();
 
         setMaximizable(true);
         setResizable(true);
         setIconifiable(true);
         setClosable(true);
-
-        StringWriter sw = new StringWriter();
-        if (file != null) {
-            PrintWriter pw = new PrintWriter(sw);
-            try {
-                loadText(file, pw);
-
-            } catch (Exception ex) {
-                ex.printStackTrace(pw);
-            }
-            pw.flush();
-        }
-
-        String doc = sw.toString();
 
         this.area = new JTextArea();
         this.area.getDocument().addDocumentListener(new DocumentListener() {
@@ -203,8 +192,6 @@ public class TextInternalFrame extends JInternalFrame {
         contentPane.add(scr, BorderLayout.CENTER);
         contentPane.add(btnPanel, BorderLayout.SOUTH);
 
-        area.setText(doc);
-
         this.area.getDocument().addUndoableEditListener(
                 new UndoableEditListener() {
                     @Override
@@ -225,35 +212,49 @@ public class TextInternalFrame extends JInternalFrame {
                 });
     }
 
+    /**
+     * ファイル名からウィンドウのタイトルを設定する.
+     * ファイルが未指定であれば"untitled"とする.
+     */
+    private void updateTitle() {
+        if (file != null) {
+            String title = file.getName();
+            setTitle(title);
+
+        } else {
+            setTitle(resource.getString("notitled.title"));
+        }
+    }
+    
+    /**
+     * ファイルを指定してテキストをロードする.
+     * @param file ファイル
+     */
+    public void load(File file) {
+        File oldValue = this.file;
+        this.file = file;
+
+        String doc;
+        try {
+            doc = (String)documentController.decrypt(file);
+            
+        } catch (Exception ex) {
+            doc = ex.toString();
+            ErrorMessageHelper.showErrorDialog(this, ex);
+        }
+
+        area.setText(doc);
+        setModified(false);
+
+        firePropertyChange(PROPERTY_FILE, oldValue, file);
+    }
+    
+    /**
+     * 現在のファイル、未指定であればnull
+     * @return ファイル
+     */
     public File getFile() {
         return file;
-    }
-
-    private void loadText(File file, Writer wr) throws IOException {
-        Reader rd = new InputStreamReader(new FileInputStream(file), "UTF-8");
-        try {
-            int ch;
-            while ((ch = rd.read()) != -1) {
-                wr.append((char) ch);
-            }
-
-        } finally {
-            rd.close();
-        }
-    }
-
-    protected void onSave() throws IOException {
-        String doc = area.getText();
-
-        Writer wr = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
-        try {
-            wr.write(doc);
-
-        } finally {
-            wr.close();
-        }
-
-        setModified(false);
     }
 
     public void setModified(boolean modified) {
@@ -266,6 +267,23 @@ public class TextInternalFrame extends JInternalFrame {
         return modified;
     }
 
+    /**
+     * ファイルを上書き保存する.
+     * @throws IOException
+     */
+    protected void onSave() throws IOException {
+        String doc = area.getText();
+
+        assert file != null;
+        documentController.encryptText(file, doc);
+
+        setModified(false);
+    }
+
+    /**
+     * ファイルを別名保存する.
+     * @throws IOException
+     */
     protected void onSaveAs() throws IOException {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
         JFileChooser fileChooser = new JFileChooser(rootDir);

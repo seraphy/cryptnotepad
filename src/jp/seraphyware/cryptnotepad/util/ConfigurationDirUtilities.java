@@ -15,9 +15,25 @@ import jp.seraphyware.cryptnotepad.Main;
  * @author seraphy
  */
 public final class ConfigurationDirUtilities {
+    
+    /**
+     * アプリケーション配備位置を明示的に指定するためのシステムプロパティ名.<br>
+     */
+    public static final String APPBASE_DIR = "appbase.dir";
+    
+    /**
+     * ユーザごとのプロファイルデータを格納するディレクトリを明示的に指定するためのシステムプロパティ名.<br>
+     */
+    public static final String APPDATA_DIR = "appdata.dir";
 
+    /**
+     * ユーザごとの設定ファイル等を格納するディレクトリ.<br>
+     */
     private static File userDataDir;
 
+    /**
+     * アプリケーションが配備されているディレクトリ.<br>
+     */
     private static File applicationBaseDir;
 
     private ConfigurationDirUtilities() {
@@ -36,7 +52,7 @@ public final class ConfigurationDirUtilities {
 
             String appData = null;
             // システムプロパティ「appdata.dir」を探す
-            appData = System.getProperty("appdata.dir");
+            appData = System.getProperty(APPDATA_DIR);
             if (appData == null) {
                 // なければ環境変数APPDATAを探す
                 // Windows2000/XP/Vista/Windows7/8には存在する.
@@ -88,7 +104,7 @@ public final class ConfigurationDirUtilities {
     public synchronized static File getApplicationBaseDir() {
         if (applicationBaseDir == null) {
 
-            String appbaseDir = System.getProperty("appbase.dir");
+            String appbaseDir = System.getProperty(APPBASE_DIR);
             if (appbaseDir != null && appbaseDir.length() > 0) {
                 // 明示的にアプリケーションベースディレクトリが指定されている場合.
                 try {

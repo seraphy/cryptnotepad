@@ -8,11 +8,19 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 
+import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.ui.MainFrame;
 import jp.seraphyware.cryptnotepad.util.AWTExceptionLoggingHandler;
 import jp.seraphyware.cryptnotepad.util.ApplicationLoggerConfigurator;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 
+/**
+ * メインエントリ.<br>
+ * <br>
+ * appbase.dirシステムプロパティでディレクトリを指定可能.<br>
+ * 
+ * @author seraphy
+ */
 public class Main implements Runnable {
 
     /**
@@ -30,6 +38,11 @@ public class Main implements Runnable {
      */
     private static final boolean isLinuxOrMacOSX;
 
+    /**
+     * ドキュメントコントローラ
+     */
+    private static DocumentController documentController;
+    
     /**
      * メインフレームのインスタンス
      */
@@ -123,9 +136,12 @@ public class Main implements Runnable {
                 ex.printStackTrace();
                 logger.log(Level.WARNING, "UIManager setup failed.", ex);
             }
+            
+            // ドキュメントコンストローラの設定
+            documentController = new DocumentController();
 
             // MainFrameの表示
-            mainFrame = new MainFrame();
+            mainFrame = new MainFrame(documentController);
             mainFrame.setSize(600, 400);
             mainFrame.setLocationByPlatform(true);
             mainFrame.setVisible(true);
@@ -149,6 +165,9 @@ public class Main implements Runnable {
     public static void main(String[] args) {
         // ロガー等の初期化
         initLogger();
+
+        // プロキシのシステム設定の利用を許可
+        System.setProperty("java.net.useSystemProxies", "true");
 
         // フレームの生成等は、SwingのEDTで実行する.
         SwingUtilities.invokeLater(new Main());

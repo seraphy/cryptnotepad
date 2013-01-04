@@ -10,6 +10,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,6 +22,7 @@ import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -29,7 +31,9 @@ import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
 import jp.seraphyware.cryptnotepad.model.SettingsModel;
+import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
+
 
 /**
  * 設定ダイアログ.
@@ -152,11 +156,22 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.EAST;
         pnl.add(new JLabel(resource.getString("label.keyfile.text")), gbc);
 
+        AbstractAction actBrowseFile = new AbstractAction("Browse") {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onBrowseFile();
+            }
+        };
+        JPanel keyFilePanel = new JPanel(new BorderLayout());
+        keyFilePanel.add(txtKeyFile, BorderLayout.CENTER);
+        keyFilePanel.add(new JButton(actBrowseFile), BorderLayout.EAST);
+        
         gbc.gridx = 1;
         gbc.gridy = 2;
         gbc.weightx = 1.;
         gbc.anchor = GridBagConstraints.WEST;
-        pnl.add(txtKeyFile, gbc);
+        pnl.add(keyFilePanel, gbc);
 
         AbstractAction actOK = new AbstractAction(
                 resource.getString("button.ok.text")) {
@@ -204,6 +219,8 @@ public class SettingsDialog extends JDialog {
      * 画面を更新する. モデルが設定されていない場合は何もしない.
      * 
      * @param save
+     *            trueであればモデルにUIの値を設定する.<br>
+     *            falseであればUIにモデルの値を設定する.<br>
      */
     protected void update(boolean save) {
         if (model == null) {
@@ -212,7 +229,12 @@ public class SettingsDialog extends JDialog {
         if (save) {
             model.setEncoding(txtEncoding.getText());
             model.setKeyFile(txtKeyFile.getText());
-            model.setPassphrase(txtPassphrase.getPassword());
+
+            // パスフレーズが入力されていない場合は以前のまま使用する.
+            char[] passphrase = txtPassphrase.getPassword();
+            if (passphrase.length > 0) {
+                model.setPassphrase(passphrase);
+            }
 
         } else {
             txtEncoding.setText(model.getEncoding());
@@ -240,6 +262,19 @@ public class SettingsDialog extends JDialog {
     }
 
     /**
+     * ファイル選択ハンドラ
+     */
+    protected void onBrowseFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setAcceptAllFileFilterUsed(true);
+        int ret = fileChooser.showOpenDialog(this);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            txtKeyFile.setText(selectedFile.getAbsolutePath());
+        }
+    }
+
+    /**
      * OKハンドラ
      */
     protected void onOK() {
@@ -247,9 +282,14 @@ public class SettingsDialog extends JDialog {
             logger.log(Level.WARNING, "model missing");
             return;
         }
-        update(true);
-        logger.log(Level.FINE, "ok model=" + model);
-        dispose();
+        try {
+            update(true);
+            logger.log(Level.FINE, "ok model=" + model);
+            dispose();
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(SettingsDialog.this, ex);
+        }
     }
 
     /**

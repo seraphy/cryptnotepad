@@ -8,4 +8,5 @@
   <entry key="new.button.title">New</entry>
   <entry key="delete.button.title">Delete</entry>
   <entry key="password.button.title">Pass</entry>
+  <entry key="error.password.required">passphrase required.</entry>
 </properties>
