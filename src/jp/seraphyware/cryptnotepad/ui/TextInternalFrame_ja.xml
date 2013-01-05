@@ -3,7 +3,10 @@
 <properties>
   <comment />
   <entry key="notitled.title">無題</entry>
+  
+  <entry key="changeFont.button.title">Font</entry>
   <entry key="save.button.title">保存</entry>
+  <entry key="export.button.title">平文で保存</entry>
 
   <entry key="confirm.title">確認</entry>
   <entry key="confirm.overwrite">上書きしますか？</entry>

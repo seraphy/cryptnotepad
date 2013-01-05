@@ -3,6 +3,8 @@
 <properties>
   <comment />
   <entry key="notitled.title">No-Titled</entry>
+  
+  <entry key="changeFont.button.title">Font</entry>
   <entry key="save.button.title">Save</entry>
   <entry key="export.button.title">Export</entry>
 

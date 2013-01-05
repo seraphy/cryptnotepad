@@ -3,20 +3,28 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Event;
-import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ResourceBundle;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
+import javax.swing.JFormattedTextField;
 import javax.swing.JInternalFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -186,7 +194,20 @@ public class TextInternalFrame extends JInternalFrame {
 
         JScrollPane scr = new JScrollPane(area);
 
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        Box btnPanel = Box.createHorizontalBox();
+
+        btnPanel.add(new JButton(new AbstractAction(resource
+                .getString("changeFont.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onChangeFont();
+            }
+        }));
+
+        btnPanel.add(Box.createHorizontalGlue());
+
         btnPanel.add(new JButton(new AbstractAction(resource
                 .getString("export.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -346,7 +367,8 @@ public class TextInternalFrame extends JInternalFrame {
      * ファイルチューザを構築する.<br>
      * 上書き確認を行うように拡張している.<br>
      * 
-     * @param rootDir 初期ディレクトリ
+     * @param rootDir
+     *            初期ディレクトリ
      * @return ファイルチューザー
      */
     private JFileChooser createFileChooser(File rootDir) {
@@ -359,7 +381,8 @@ public class TextInternalFrame extends JInternalFrame {
                 if (selectedFile != null && selectedFile.exists()) {
                     String title = resource.getString("confirm.title");
                     String message = resource.getString("confirm.overwrite");
-                    int ret = JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION);
+                    int ret = JOptionPane.showConfirmDialog(this, message,
+                            title, JOptionPane.YES_NO_OPTION);
                     if (ret != JOptionPane.YES_OPTION) {
                         return;
                     }
@@ -369,7 +392,7 @@ public class TextInternalFrame extends JInternalFrame {
         };
         return fileChooser;
     }
-    
+
     /**
      * ファイルを別名保存する.
      * 
@@ -426,6 +449,77 @@ public class TextInternalFrame extends JInternalFrame {
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(TextInternalFrame.this, ex);
+        }
+    }
+
+    /**
+     * フォント選択
+     */
+    protected void onChangeFont() {
+        String fontFamilyNames[] = GraphicsEnvironment
+                .getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        Font currentFont = area.getFont();
+
+        String fontName = null;
+        int fontSize = 11;
+
+        if (currentFont != null) {
+            fontName = currentFont.getFontName();
+            fontSize = currentFont.getSize();
+        }
+
+        JComboBox fontCombo = new JComboBox(fontFamilyNames);
+        if (fontName != null) {
+            fontCombo.setSelectedItem(fontName);
+        }
+
+        JFormattedTextField txtFontSize = new JFormattedTextField(
+                new DecimalFormat("##"));
+        txtFontSize.setValue(fontSize);
+
+        JPanel pnl = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.EAST;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0.;
+        gbc.weighty = 0.;
+
+        pnl.add(new JLabel("Font Name"), gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+
+        pnl.add(new JLabel("Font Size"), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.weightx = 1.;
+
+        pnl.add(fontCombo, gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.weightx = 1.;
+
+        pnl.add(txtFontSize, gbc);
+
+        int ret = JOptionPane.showConfirmDialog(this, pnl, "Font",
+                JOptionPane.OK_CANCEL_OPTION);
+        if (ret != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String selFontName = (String) fontCombo.getSelectedItem();
+        int selFontSize = ((Number) txtFontSize.getValue()).intValue();
+        if (selFontName != null && selFontSize > 0) {
+            Font newFont = new Font(selFontName, Font.PLAIN, selFontSize);
+            area.setFont(newFont);
         }
     }
 }
