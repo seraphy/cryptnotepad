@@ -4,4 +4,7 @@
   <comment />
   <entry key="notitled.title">無題</entry>
   <entry key="save.button.title">保存</entry>
+
+  <entry key="confirm.title">確認</entry>
+  <entry key="confirm.close.unsavedchanges">未保存の変更があります。変更を破棄しますか?</entry>
 </properties>

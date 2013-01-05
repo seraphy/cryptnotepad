@@ -5,8 +5,7 @@ import java.awt.Container;
 import java.awt.Event;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ResourceBundle;
@@ -25,6 +24,8 @@ import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.InternalFrameAdapter;
+import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
@@ -51,7 +52,7 @@ public class TextInternalFrame extends JInternalFrame {
      * ドキュメントコントローラ
      */
     private DocumentController documentController;
-    
+
     /**
      * リソースバンドル
      */
@@ -79,6 +80,7 @@ public class TextInternalFrame extends JInternalFrame {
 
     /**
      * コンストラクタ
+     * 
      * @param documentController
      * @param file
      */
@@ -87,9 +89,17 @@ public class TextInternalFrame extends JInternalFrame {
             dispose();
             throw new IllegalArgumentException();
         }
-        
+
+        setDefaultCloseOperation(JInternalFrame.DO_NOTHING_ON_CLOSE);
+        addInternalFrameListener(new InternalFrameAdapter() {
+            @Override
+            public void internalFrameClosing(InternalFrameEvent e) {
+                onClosing();
+            }
+        });
+
         this.documentController = documentController;
-        
+
         this.resource = ResourceBundle.getBundle(getClass().getName(),
                 XMLResourceBundle.CONTROL);
 
@@ -201,65 +211,109 @@ public class TextInternalFrame extends JInternalFrame {
                 });
 
         setModified(false);
-        actSave.setEnabled(false);
-
-        addPropertyChangeListener(PROPERTY_MODIFIED,
-                new PropertyChangeListener() {
-                    @Override
-                    public void propertyChange(PropertyChangeEvent evt) {
-                        actSave.setEnabled(isModified());
-                    }
-                });
     }
 
     /**
-     * ファイル名からウィンドウのタイトルを設定する.
-     * ファイルが未指定であれば"untitled"とする.
+     * ウィンドウを閉じる.
+     */
+    protected void onClosing() {
+        if (isModified()) {
+            String message = resource.getString("confirm.close.unsavedchanges");
+            String title = resource.getString("confirm.title");
+            int ret = JOptionPane.showConfirmDialog(this, message, title,
+                    JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        // 閉じる.
+        try {
+            setClosed(true);
+
+        } catch (PropertyVetoException e) {
+            // 無視する
+        }
+    }
+
+    /**
+     * ファイル名からウィンドウのタイトルを設定する. ファイルが未指定であれば"untitled"とする.
      */
     private void updateTitle() {
+        String title;
         if (file != null) {
-            String title = file.getName();
-            setTitle(title);
+            title = file.getName();
 
         } else {
-            setTitle(resource.getString("notitled.title"));
+            title = resource.getString("notitled.title");
         }
+
+        String marker = "";
+        if (isModified()) {
+            marker = "*";
+        }
+        setTitle(marker + title);
     }
-    
+
     /**
-     * ファイルを指定してテキストをロードする.
-     * @param file ファイル
+     * 編集するテキストを設定する.<br>
+     * 変更フラグはリセットされる.
+     * 
+     * @param text
      */
-    public void load(File file) {
-        File oldValue = this.file;
-        this.file = file;
-
-        String doc;
-        try {
-            doc = (String)documentController.decrypt(file);
-            
-        } catch (Exception ex) {
-            doc = ex.toString();
-            ErrorMessageHelper.showErrorDialog(this, ex);
+    public void setText(String text) {
+        if (text == null) {
+            text = "";
         }
+        area.setText(text);
 
-        area.setText(doc);
         setModified(false);
-
-        firePropertyChange(PROPERTY_FILE, oldValue, file);
     }
-    
+
+    /**
+     * 編集するテキストを取得する.
+     * 
+     * @return
+     */
+    public String getText() {
+        return area.getText();
+    }
+
     /**
      * 現在のファイル、未指定であればnull
+     * 
      * @return ファイル
      */
     public File getFile() {
         return file;
     }
 
+    /**
+     * 現在のファイル名を設定する.<br>
+     * タイトルも変更される.
+     * 
+     * @param file
+     *            ファイル
+     */
+    public void setFile(File file) {
+        File oldValue = this.file;
+        this.file = file;
+
+        updateTitle();
+
+        firePropertyChange(PROPERTY_FILE, oldValue, file);
+    }
+
+    /**
+     * 変更フラグを更新する.<br>
+     * タイトルの変更マーカーも変更される.
+     * 
+     * @param modified
+     */
     public void setModified(boolean modified) {
         boolean oldValue = this.modified;
         this.modified = modified;
+        updateTitle();
         firePropertyChange(PROPERTY_MODIFIED, oldValue, modified);
     }
 
@@ -269,6 +323,7 @@ public class TextInternalFrame extends JInternalFrame {
 
     /**
      * ファイルを上書き保存する.
+     * 
      * @throws IOException
      */
     protected void onSave() throws IOException {
@@ -282,6 +337,7 @@ public class TextInternalFrame extends JInternalFrame {
 
     /**
      * ファイルを別名保存する.
+     * 
      * @throws IOException
      */
     protected void onSaveAs() throws IOException {
@@ -297,6 +353,7 @@ public class TextInternalFrame extends JInternalFrame {
 
         File oldValue = this.file;
         this.file = file;
+        updateTitle();
 
         onSave();
 

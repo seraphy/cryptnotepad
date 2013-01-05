@@ -28,6 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
 import jp.seraphyware.cryptnotepad.model.DocumentController;
+import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
@@ -132,20 +133,49 @@ public class MainFrame extends JFrame {
      */
     protected JInternalFrame createChildFrame(File file) {
 
+        // パスフレーズの有無を確認する.
         if (!documentController.getSettingsModel().isValid()) {
+            // パスフレーズが未設定であればエラー表示し、ウィンドウは開かない.
             String message = resource.getString("error.password.required");
             JOptionPane.showMessageDialog(this, message);
             return null;
         }
 
-        TextInternalFrame internalFrame = new TextInternalFrame(
+        String doc;
+        try {
+            // ファイルをロードする.
+            // 外部URLのファイルハッシュつきの場合は復号化に時間がかかるのでウェイトカーソルをつける.
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            try {
+                doc = (String) documentController.decrypt(file);
+
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
+            }
+
+        } catch (Exception ex) {
+            // ロードに失敗したらエラー表示し、ウィンドウは開かない.
+            ErrorMessageHelper.showErrorDialog(this, ex);
+            return null;
+        }
+
+        // テキスト編集用の子ウィンドウを作成する.
+        final TextInternalFrame internalFrame = new TextInternalFrame(
                 documentController);
 
+        // テキストとファイル名を設定する.
+        internalFrame.setText(doc);
+        internalFrame.setFile(file);
+
+        // ファイル名が変更されたら通知を受け取るようにリスナを設定する.
         internalFrame.addPropertyChangeListener(
                 TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
-                        fileTreePanel.refresh();
+                        // ドキュメントのファイル名が変更された場合
+                        onChangeFileName(internalFrame,
+                                (File) evt.getOldValue(),
+                                (File) evt.getNewValue());
                     }
                 });
 
@@ -160,16 +190,6 @@ public class MainFrame extends JFrame {
 
         } catch (PropertyVetoException ex) {
             logger.log(Level.FINE, ex.toString());
-        }
-
-        // ファイルをロードする.
-        // 外部URLのファイルハッシュつきの場合は復号化に時間がかかるのでウェイトカーソルをつける.
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        try {
-            internalFrame.load(file);
-            
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
         }
 
         return internalFrame;
@@ -190,7 +210,7 @@ public class MainFrame extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 File file = fileTreePanel.getSelectedFile();
                 if (file != null) {
-                    createChildFrame(file);
+                    onOpenFile(file);
                 }
             }
         });
@@ -246,6 +266,10 @@ public class MainFrame extends JFrame {
         return leftPanel;
     }
 
+    /**
+     * 設定ボタンハンドラ.<br>
+     * パスフレーズやキーファイル、文字コードなどの設定を行う.<br>
+     */
     protected void onSettings() {
         SettingsDialog settingsDlg = new SettingsDialog(this);
         settingsDlg.setLocationRelativeTo(this);
@@ -253,8 +277,54 @@ public class MainFrame extends JFrame {
         settingsDlg.setVisible(true);
     }
 
+    /**
+     * ドキュメント名が変更されたことを通知される.
+     * 
+     * @param internalFrame
+     *            ドキュメントのウィンドウ
+     * @param oldFile
+     *            以前のファイル名、なければnull
+     * @param newFile
+     *            新しいファイル名
+     */
+    protected void onChangeFileName(JInternalFrame internalFrame, File oldFile,
+            File newFile) {
+        // ドキュメントツリーをリフレッシュする.
+        fileTreePanel.refresh();
+    }
+
+    /**
+     * 新規用にテキストウィンドウを開く.
+     */
     protected void onNew() {
-        createChildFrame(null);
+        onOpenFile(null);
+    }
+
+    /**
+     * 既存のテキストドキュメント用のウィンドウを開く.
+     * 
+     * @param file
+     *            ファイル (nullの場合は新規ドキュメント用)
+     */
+    protected void onOpenFile(File file) {
+        for (JInternalFrame child : desktop.getAllFrames()) {
+            if (!child.isDisplayable() || !child.isVisible()) {
+                // 表示されていないか、破棄されたものは除外する.
+                continue;
+            }
+            if (child instanceof TextInternalFrame) {
+                TextInternalFrame c = (TextInternalFrame) child;
+                File docFile = c.getFile();
+                if (docFile != null && docFile.equals(file)) {
+                    // すでに同ファイルがオープンされていれば、それをアクティブにする.
+                    // (別名保存などで複数同名ファイルが開かれた状態の場合は最初の一つ)
+                    desktop.getDesktopManager().activateFrame(c);
+                    return;
+                }
+            }
+        }
+        // まだファイルが開かれていなければ開く.
+        createChildFrame(file);
     }
 
     protected void onDelete() {
@@ -269,7 +339,38 @@ public class MainFrame extends JFrame {
      * 破棄する場合
      */
     protected void onClosing() {
+        // 変更されていない子ウィンドウがあるか検査する.
+        boolean needConfirm = false;
+        for (JInternalFrame child : desktop.getAllFrames()) {
+            if (!child.isDisplayable() || !child.isVisible()) {
+                // 表示できないか、表示されていないものは除外する.
+                continue;
+            }
+            if (child instanceof TextInternalFrame) {
+                TextInternalFrame c = (TextInternalFrame) child;
+                if (c.isModified()) {
+                    needConfirm = true;
+                    break;
+                }
+            }
+        }
+
+        // 変更を破棄してよいか確認する.
+        if (needConfirm) {
+            String message = resource.getString("confirm.close.unsavedchanges");
+            String title = resource.getString("confirm.title");
+            int ret = JOptionPane.showConfirmDialog(this, message, title,
+                    JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        // ドキュメントコントローラを破棄する.
+        // (パスフレーズなどをメモリから除去する.)
         documentController.dispose();
+
+        // メインフレームを破棄する.
         dispose();
         logger.log(Level.INFO, "disposed mainframe");
     }

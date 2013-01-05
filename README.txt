@@ -8,6 +8,14 @@ IV + AES/CBC/PKCS5Padding
 ブロックサイズは128bit.
 
 
+復号化されたデータは、先頭にヘッダがあり、ヘッダ終了を示す行頭改行につづいてボディとなる。
+ヘッダは、
+Content-Type: text/plain;charset=UTF-8\r\n
+Content-Lemgth: nnn\r\n
+\r\n
+のような形式となっている。
+
+
 暗号化キーは、
 PBKDF2WithHmacSHA1
 でパスフレーズとソルトから計算したものを
