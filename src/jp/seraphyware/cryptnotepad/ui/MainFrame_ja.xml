@@ -9,7 +9,7 @@
   <entry key="delete.button.title">削除</entry>
   <entry key="password.button.title">パス</entry>
 
-  <entry key="error.password.required">パスフレーズが設定されていません.</entry>
+  <entry key="error.password.required">パスフレーズが設定されていません.設定しますか？</entry>
 
   <entry key="confirm.title">確認</entry>
   <entry key="confirm.close.unsavedchanges">保存していない全ての変更が破棄されます。よろしいですか？</entry>

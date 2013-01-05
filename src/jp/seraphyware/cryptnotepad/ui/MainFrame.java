@@ -134,11 +134,17 @@ public class MainFrame extends JFrame {
     protected JInternalFrame createChildFrame(File file) {
 
         // パスフレーズの有無を確認する.
-        if (!documentController.getSettingsModel().isValid()) {
-            // パスフレーズが未設定であればエラー表示し、ウィンドウは開かない.
+        while (!documentController.getSettingsModel().isValid()) {
+            // パスフレーズが未設定であればエラー表示し、設定画面を開くか問い合わせる.
             String message = resource.getString("error.password.required");
-            JOptionPane.showMessageDialog(this, message);
-            return null;
+            String title = resource.getString("confirm.title");
+            int ret = JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                // 設定画面を開かない場合は、ここで終了.
+                return null;
+            }
+            // 設定画面を開く.(モーダル)
+            onSettings();
         }
 
         String doc;

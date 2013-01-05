@@ -9,7 +9,7 @@
   <entry key="delete.button.title">Delete</entry>
   <entry key="password.button.title">Pass</entry>
 
-  <entry key="error.password.required">passphrase required.</entry>
+  <entry key="error.password.required">passphrase required. do you want to set up the passphrase?</entry>
 
   <entry key="confirm.title">CONFIRM</entry>
   <entry key="confirm.close.unsavedchanges">This will discard all unsaved changes. Are you sure?</entry>

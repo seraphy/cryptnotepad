@@ -34,7 +34,6 @@ import jp.seraphyware.cryptnotepad.model.SettingsModel;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
-
 /**
  * 設定ダイアログ.
  * 
@@ -60,6 +59,12 @@ public class SettingsDialog extends JDialog {
      */
     private SettingsModel model = null;
 
+    /**
+     * コンストラクタ
+     * 
+     * @param parent
+     *            親フレーム
+     */
     public SettingsDialog(JFrame parent) {
         super(parent);
         setModalityType(ModalityType.APPLICATION_MODAL);
@@ -67,6 +72,9 @@ public class SettingsDialog extends JDialog {
             resource = ResourceBundle.getBundle(getClass().getName(),
                     XMLResourceBundle.CONTROL);
             init();
+
+            // パスフレーズにフォーカスを設定する.
+            txtPassphrase.requestFocus();
 
         } catch (RuntimeException ex) {
             dispose();
@@ -158,6 +166,7 @@ public class SettingsDialog extends JDialog {
 
         AbstractAction actBrowseFile = new AbstractAction("Browse") {
             private static final long serialVersionUID = 1L;
+
             @Override
             public void actionPerformed(ActionEvent e) {
                 onBrowseFile();
@@ -166,7 +175,7 @@ public class SettingsDialog extends JDialog {
         JPanel keyFilePanel = new JPanel(new BorderLayout());
         keyFilePanel.add(txtKeyFile, BorderLayout.CENTER);
         keyFilePanel.add(new JButton(actBrowseFile), BorderLayout.EAST);
-        
+
         gbc.gridx = 1;
         gbc.gridy = 2;
         gbc.weightx = 1.;
@@ -199,8 +208,10 @@ public class SettingsDialog extends JDialog {
         btnPanel.add(btnOK);
         btnPanel.add(btnCancel);
 
+        // OKボタンをデフォルトボタンに設定
         getRootPane().setDefaultButton(btnOK);
 
+        // ESCキーでキャンセルするようにキーマップを設定する.
         ActionMap am = getRootPane().getActionMap();
         InputMap im = getRootPane().getInputMap(
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
