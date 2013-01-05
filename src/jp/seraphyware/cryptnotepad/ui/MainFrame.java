@@ -29,6 +29,7 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
 import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
+import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
@@ -45,8 +46,13 @@ public class MainFrame extends JFrame {
     /**
      * ロガー.<br>
      */
-    private static final Logger logger = Logger
-            .getLogger(TextInternalFrame.class.getName());
+    private static final Logger logger = Logger.getLogger(MainFrame.class
+            .getName());
+
+    /**
+     * アプリケーション設定
+     */
+    private ApplicationSettings appConfig;
 
     /**
      * リソースバンドル
@@ -78,7 +84,7 @@ public class MainFrame extends JFrame {
             }
 
             this.documentController = documentController;
-
+            this.appConfig = ApplicationSettings.getInstance();
             resource = ResourceBundle.getBundle(getClass().getName(),
                     XMLResourceBundle.CONTROL);
             init();
@@ -346,17 +352,11 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * 最後に使用したファイル削除ディレクトリ.<br>
-     * なればnull.<br>
-     */
-    private File lastUseDeleteDir;
-
-    /**
      * 任意のファイルを選択して削除する.
      */
     protected void onDeleteAny() {
         JFileChooser fileChooser = FileChooserEx.createFileChooser(
-                lastUseDeleteDir, false);
+                appConfig.getLastUseDir(), false);
 
         // 複数選択可
         fileChooser.setMultiSelectionEnabled(true);
@@ -386,7 +386,7 @@ public class MainFrame extends JFrame {
             for (File file : files) {
                 try {
                     if (file.exists() && !file.isDirectory()) {
-                        lastUseDeleteDir = file.getParentFile();
+                        appConfig.setLastUseDir(file.getParentFile());
                         CryptUtils.erase(file);
                     }
 
@@ -457,10 +457,6 @@ public class MainFrame extends JFrame {
                 return;
             }
         }
-
-        // ドキュメントコントローラを破棄する.
-        // (パスフレーズなどをメモリから除去する.)
-        documentController.dispose();
 
         // メインフレームを破棄する.
         dispose();

@@ -1,17 +1,26 @@
 package jp.seraphyware.cryptnotepad;
 
 import java.awt.Font;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 
+import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
+import jp.seraphyware.cryptnotepad.model.SettingsModel;
 import jp.seraphyware.cryptnotepad.ui.MainFrame;
 import jp.seraphyware.cryptnotepad.util.AWTExceptionLoggingHandler;
 import jp.seraphyware.cryptnotepad.util.ApplicationLoggerConfigurator;
+import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 
 /**
@@ -39,10 +48,25 @@ public class Main implements Runnable {
     private static final boolean isLinuxOrMacOSX;
 
     /**
+     * アプリケーション設定ファイル
+     */
+    private File appConfigFile;
+
+    /**
+     * アプリケーション設定ファイルの変更フラグ
+     */
+    private boolean appConfigModified;
+
+    /**
      * ドキュメントコントローラ
      */
     private static DocumentController documentController;
-    
+
+    /**
+     * アプリケーション設定
+     */
+    private static ApplicationSettings appConfig;
+
     /**
      * メインフレームのインスタンス
      */
@@ -136,15 +160,31 @@ public class Main implements Runnable {
                 ex.printStackTrace();
                 logger.log(Level.WARNING, "UIManager setup failed.", ex);
             }
-            
+
+            // アプリケーション設定の初期化
+            appConfig = ApplicationSettings.getInstance();
+
             // ドキュメントコンストローラの設定
             documentController = new DocumentController();
 
+            // アプリケーション設定のロード
+            initAppConfig();
+            ApplicationSettings appConfig = ApplicationSettings.getInstance();
+
             // MainFrameの表示
             mainFrame = new MainFrame(documentController);
-            mainFrame.setSize(600, 400);
+            mainFrame.setSize(appConfig.getMainFrameWidth(),
+                    appConfig.getMainFrameHeight());
             mainFrame.setLocationByPlatform(true);
             mainFrame.setVisible(true);
+
+            // ウィンドウ破棄イベントのハンドリング
+            mainFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent e) {
+                    onCloseMainFrame(mainFrame);
+                }
+            });
 
         } catch (Throwable ex) {
             // なんらかの致命的な初期化エラーがあった場合、ログとコンソールに表示
@@ -152,6 +192,85 @@ public class Main implements Runnable {
             ex.printStackTrace();
             logger.log(Level.SEVERE, "Application initiation failed.", ex);
             ErrorMessageHelper.showErrorDialog(null, ex);
+        }
+    }
+
+    /**
+     * アプリケーション終了のハンドリング.
+     * 
+     * @param mainFrame
+     */
+    protected void onCloseMainFrame(MainFrame mainFrame) {
+        // ウィンドウサイズの保存
+        if (mainFrame.getExtendedState() == JFrame.NORMAL) {
+            int width = mainFrame.getWidth();
+            int height = mainFrame.getHeight();
+            if (width > 100 && height > 100) {
+                appConfig.setMainFrameWidth(width);
+                appConfig.setMainFrameHeight(height);
+            }
+        }
+
+        // 設定を退避する.
+        SettingsModel settingModel = documentController.getSettingsModel();
+        appConfig.setEncoding(settingModel.getEncoding());
+        appConfig.setKeyFile(settingModel.getKeyFile());
+
+        // アプリケーション設定の保存
+        saveAppConfig();
+
+        // ドキュメントコントローラを破棄する.
+        // (パスフレーズなどをメモリから除去する.)
+        documentController.dispose();
+        
+        logger.log(Level.INFO, "normal shutdown.");
+    }
+
+    /**
+     * アプリケーション設定ファイルの初期化とロード
+     */
+    public void initAppConfig() {
+        try {
+            // アプリケーション設定ファイルの位置を求める
+            File userDir = ConfigurationDirUtilities.getUserDataDir();
+            appConfigFile = new File(userDir, "appconfig.xml");
+
+            // 設定ファイルをロードする.
+            appConfig.load(appConfigFile);
+
+            // プロパティ変更イベントを受け取れるようにリスナーを設定する.
+            appConfig.addPropertyChangeListener(new PropertyChangeListener() {
+                @Override
+                public void propertyChange(PropertyChangeEvent evt) {
+                    // 終了時に設定ファイルを保存するようにフラグを立てておく.
+                    appConfigModified = true;
+                }
+            });
+
+            // 設定に反映する.
+            SettingsModel settingModel = documentController.getSettingsModel();
+            settingModel.setEncoding(appConfig.getEncoding());
+            settingModel.setKeyFile(appConfig.getKeyFile());
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            logger.log(Level.WARNING, "config file load failed.", ex);
+        }
+    }
+
+    /**
+     * アプリケーション設定ファイルを保存する.
+     */
+    public void saveAppConfig() {
+        try {
+            // 変更フラグがあれば、アプリケーション設定をファイルに保存する.
+            if (appConfigModified) {
+                appConfig.save(appConfigFile);
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            logger.log(Level.WARNING, "config file save failed.", ex);
         }
     }
 

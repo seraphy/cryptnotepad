@@ -2,6 +2,7 @@ package jp.seraphyware.cryptnotepad.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Event;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
@@ -38,6 +39,7 @@ import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 
+import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
@@ -55,6 +57,11 @@ public class TextInternalFrame extends JInternalFrame {
     public static final String PROPERTY_FILE = "file";
 
     public static final String PROPERTY_MODIFIED = "modified";
+
+    /**
+     * アプリケーション設定
+     */
+    private ApplicationSettings appConfig;
 
     /**
      * ドキュメントコントローラ
@@ -107,7 +114,7 @@ public class TextInternalFrame extends JInternalFrame {
         });
 
         this.documentController = documentController;
-
+        this.appConfig = ApplicationSettings.getInstance();
         this.resource = ResourceBundle.getBundle(getClass().getName(),
                 XMLResourceBundle.CONTROL);
 
@@ -136,6 +143,16 @@ public class TextInternalFrame extends JInternalFrame {
             }
         });
 
+        // フォントを適用する.
+        String fontName = appConfig.getFontName();
+        int fontSize = appConfig.getFontSize();
+        if (fontName != null && fontName.trim().length() > 0 && fontSize > 0) {
+            // フォントを適用する.
+            Font newFont = new Font(fontName, Font.PLAIN, fontSize);
+            area.setFont(newFont);
+        }
+
+        // Undo/Redoに対応する.
         this.undoManager = new UndoManager();
 
         ActionMap am = this.area.getActionMap();
@@ -355,10 +372,19 @@ public class TextInternalFrame extends JInternalFrame {
      * @throws IOException
      */
     protected void onSave() throws IOException {
+        assert file != null;
+
         String doc = area.getText();
 
-        assert file != null;
-        documentController.encryptText(file, doc);
+        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+        // ウェイトカーソルにする.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            documentController.encryptText(file, doc);
+
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
 
         setModified(false);
     }
@@ -390,17 +416,11 @@ public class TextInternalFrame extends JInternalFrame {
     }
 
     /**
-     * エクスポート用の最後に使用したディレクトリ.<br>
-     * 初期状態はnull.<br>
-     */
-    private File lastUseExportDir;
-
-    /**
      * テキストを平文で外部ファイルにエクスポートする.
      */
     protected void onExport() {
         JFileChooser fileChooser = FileChooserEx.createFileChooser(
-                lastUseExportDir, true);
+                appConfig.getLastUseDir(), true);
         if (file != null) {
             String name = file.getName();
             fileChooser.setSelectedFile(new File(name));
@@ -414,7 +434,7 @@ public class TextInternalFrame extends JInternalFrame {
 
         try {
             File file = fileChooser.getSelectedFile();
-            lastUseExportDir = file.getParentFile();
+            appConfig.setLastUseDir(file.getParentFile());
 
             String doc = area.getText();
             documentController.savePlainText(file, doc);
@@ -490,8 +510,13 @@ public class TextInternalFrame extends JInternalFrame {
         String selFontName = (String) fontCombo.getSelectedItem();
         int selFontSize = ((Number) txtFontSize.getValue()).intValue();
         if (selFontName != null && selFontSize > 0) {
+            // フォントを適用する.
             Font newFont = new Font(selFontName, Font.PLAIN, selFontSize);
             area.setFont(newFont);
+
+            // 現在のフォント設定を記憶
+            appConfig.setFontName(selFontName);
+            appConfig.setFontSize(selFontSize);
         }
     }
 }
