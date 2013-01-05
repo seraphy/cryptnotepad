@@ -5,12 +5,23 @@ import java.io.InputStream;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
+/**
+ * アプリケーションの情報.<br>
+ * 
+ * @author seraphy
+ */
 public final class ApplicationInfo {
 
     public static ApplicationInfo singleton = new ApplicationInfo();
 
+    /**
+     * タイトル
+     */
     private String title;
 
+    /**
+     * バージョン
+     */
     private String version;
 
     private ApplicationInfo() {
@@ -22,6 +33,11 @@ public final class ApplicationInfo {
         }
     }
 
+    /**
+     * メタ情報のマニフェストから、タイトルとバージョンを取得する.
+     * 
+     * @throws IOException
+     */
     private void load() throws IOException {
         ClassLoader cl = ApplicationInfo.class.getClassLoader();
 
