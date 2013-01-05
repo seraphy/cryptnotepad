@@ -154,24 +154,6 @@ public class TextInternalFrame extends JInternalFrame {
             }
         };
 
-        im.put(KeyStroke.getKeyStroke('Z', Event.CTRL_MASK), actUndo);
-        am.put(actUndo, actUndo);
-        im.put(KeyStroke.getKeyStroke('Y', Event.CTRL_MASK), actRedo);
-        am.put(actRedo, actRedo);
-
-        JScrollPane scr = new JScrollPane(area);
-
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnPanel.add(new JButton(new AbstractAction(resource
-                .getString("export.button.title")) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onExport();
-            }
-        }));
-
         final AbstractAction actSave = new AbstractAction(
                 resource.getString("save.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -193,6 +175,27 @@ public class TextInternalFrame extends JInternalFrame {
                 }
             }
         };
+
+        im.put(KeyStroke.getKeyStroke('Z', Event.CTRL_MASK), actUndo);
+        am.put(actUndo, actUndo);
+        im.put(KeyStroke.getKeyStroke('Y', Event.CTRL_MASK), actRedo);
+        am.put(actRedo, actRedo);
+
+        im.put(KeyStroke.getKeyStroke('S', Event.CTRL_MASK), actSave);
+        am.put(actSave, actSave);
+
+        JScrollPane scr = new JScrollPane(area);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.add(new JButton(new AbstractAction(resource
+                .getString("export.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onExport();
+            }
+        }));
 
         btnPanel.add(new JButton(actSave));
 
@@ -217,6 +220,7 @@ public class TextInternalFrame extends JInternalFrame {
      * ウィンドウを閉じる.
      */
     protected void onClosing() {
+        // 変更があれば破棄するか確認する.
         if (isModified()) {
             String message = resource.getString("confirm.close.unsavedchanges");
             String title = resource.getString("confirm.title");
@@ -229,10 +233,13 @@ public class TextInternalFrame extends JInternalFrame {
 
         // 閉じる.
         try {
-            setClosed(true);
-
-        } catch (PropertyVetoException e) {
-            // 無視する
+            fireVetoableChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
+            isClosed = true;
+            setVisible(false);
+            firePropertyChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
+            dispose();
+        } catch (PropertyVetoException pve) {
+            // 無視する.
         }
     }
 
@@ -336,13 +343,41 @@ public class TextInternalFrame extends JInternalFrame {
     }
 
     /**
+     * ファイルチューザを構築する.<br>
+     * 上書き確認を行うように拡張している.<br>
+     * 
+     * @param rootDir 初期ディレクトリ
+     * @return ファイルチューザー
+     */
+    private JFileChooser createFileChooser(File rootDir) {
+        JFileChooser fileChooser = new JFileChooser(rootDir) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void approveSelection() {
+                File selectedFile = getSelectedFile();
+                if (selectedFile != null && selectedFile.exists()) {
+                    String title = resource.getString("confirm.title");
+                    String message = resource.getString("confirm.overwrite");
+                    int ret = JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION);
+                    if (ret != JOptionPane.YES_OPTION) {
+                        return;
+                    }
+                }
+                super.approveSelection();
+            }
+        };
+        return fileChooser;
+    }
+    
+    /**
      * ファイルを別名保存する.
      * 
      * @throws IOException
      */
     protected void onSaveAs() throws IOException {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
-        JFileChooser fileChooser = new JFileChooser(rootDir);
+        JFileChooser fileChooser = createFileChooser(rootDir);
         int ret = fileChooser.showSaveDialog(this);
         if (ret != JFileChooser.APPROVE_OPTION) {
             // OK以外
@@ -360,7 +395,37 @@ public class TextInternalFrame extends JInternalFrame {
         firePropertyChange(PROPERTY_FILE, oldValue, file);
     }
 
+    /**
+     * エクスポート用の最後に使用したディレクトリ.<br>
+     * 初期状態はnull.<br>
+     */
+    private File lastUseExportDir;
+
+    /**
+     * テキストを平文で外部ファイルにエクスポートする.
+     */
     protected void onExport() {
-        JOptionPane.showMessageDialog(this, "export");
+        JFileChooser fileChooser = createFileChooser(lastUseExportDir);
+        if (file != null) {
+            String name = file.getName();
+            fileChooser.setSelectedFile(new File(name));
+        }
+
+        int ret = fileChooser.showSaveDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            // OK以外
+            return;
+        }
+
+        try {
+            File file = fileChooser.getSelectedFile();
+            lastUseExportDir = file.getParentFile();
+
+            String doc = area.getText();
+            documentController.savePlainText(file, doc);
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(TextInternalFrame.this, ex);
+        }
     }
 }

@@ -1,9 +1,12 @@
 package jp.seraphyware.cryptnotepad.model;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -263,10 +266,39 @@ public class DocumentController {
             text = "";
         }
 
-        byte[] data = text.getBytes(settingsModel.getEncoding());
+        String encoding = settingsModel.getEncoding();
+        byte[] data = text.getBytes(encoding);
+
+        encrypt(file, data, "text/plain; charset=" + encoding);
+    }
+
+    /**
+     * 平文でテキストをファイルに保存します.
+     * 
+     * @param file
+     *            ファイル
+     * @param text
+     *            テキスト
+     * @throws IOException
+     */
+    public void savePlainText(File file, String text) throws IOException {
+        if (file == null) {
+            throw new IllegalArgumentException();
+        }
+        if (text == null) {
+            text = "";
+        }
 
         String encoding = settingsModel.getEncoding();
-        encrypt(file, data, "text/plain; charset=" + encoding);
+        byte[] data = text.getBytes(encoding);
+
+        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+        try {
+            os.write(data);
+
+        } finally {
+            os.close();
+        }
     }
 
     /**
