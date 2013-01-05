@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -29,6 +30,11 @@ public class CachedCalcurateFileHash extends CalcurateFileHash {
     private static class Result {
 
         /**
+         * 最後にチェックした日時
+         */
+        private long lastCheck;
+
+        /**
          * ファイルの最終更新日
          */
         private long lastModified;
@@ -38,12 +44,20 @@ public class CachedCalcurateFileHash extends CalcurateFileHash {
          */
         private byte[] hash;
 
+        public long getLastCheck() {
+            return lastCheck;
+        }
+
         public byte[] getHash() {
             return hash;
         }
 
         public long getLastModified() {
             return lastModified;
+        }
+
+        public void setLastCheck(long lastCheck) {
+            this.lastCheck = lastCheck;
         }
 
         public void setHash(byte[] hash) {
@@ -53,12 +67,36 @@ public class CachedCalcurateFileHash extends CalcurateFileHash {
         public void setLastModified(long lastModified) {
             this.lastModified = lastModified;
         }
+
+        @Override
+        public String toString() {
+            StringBuilder buf = new StringBuilder();
+            buf.append("(lastCheck=").append(lastCheck);
+            buf.append(", lastModified=").append(lastModified);
+            buf.append(", hash=").append(
+                    (hash == null) ? "null" : Arrays.toString(hash));
+            buf.append(")");
+            return buf.toString();
+        }
     }
 
     /**
      * URIに対するハッシュの計算結果を保持する.
      */
     private HashMap<URI, Result> cache = new HashMap<URI, Result>();
+
+    /**
+     * 不感応時間(mSec)
+     */
+    private long unsensitiveSpan = 30 * 60 * 1000; // 30分
+
+    public long getUnsensitiveSpan() {
+        return unsensitiveSpan;
+    }
+
+    public void setUnsensitiveSpan(long unsensitiveSpan) {
+        this.unsensitiveSpan = unsensitiveSpan;
+    }
 
     /*
      * キャッシュするよう拡張している.
@@ -88,9 +126,19 @@ public class CachedCalcurateFileHash extends CalcurateFileHash {
             // 該当なければキャッシュを作成する.
             result = new Result();
             cache.put(uri, result);
+        }
 
-            // 新規の場合は変更あり
+        if (result.getHash() == null) {
+            // まだハッシュが格納されていなければ変更あり
+            // (新規の場合など)
             modified = true;
+        }
+
+        long span = System.currentTimeMillis() - result.getLastCheck();
+        if (!modified && (span < getUnsensitiveSpan())) {
+            // 新規ではなく、且つ、前回チェックから不感応時間を経過していなければ
+            // ロード試行せず、前回のままの結果をもちいる.
+            return result.getHash();
         }
 
         // コンテンツの更新を確認する.
@@ -117,6 +165,9 @@ public class CachedCalcurateFileHash extends CalcurateFileHash {
             // ハッシュ値を設定する.
             result.setHash(hash);
         }
+
+        // 確認日時を設定する.
+        result.setLastCheck(System.currentTimeMillis());
 
         return result.getHash();
     }

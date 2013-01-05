@@ -3,6 +3,7 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -162,7 +163,14 @@ public class MainFrame extends JFrame {
         }
 
         // ファイルをロードする.
-        internalFrame.load(file);
+        // 外部URLのファイルハッシュつきの場合は復号化に時間がかかるのでウェイトカーソルをつける.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            internalFrame.load(file);
+            
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
 
         return internalFrame;
     }

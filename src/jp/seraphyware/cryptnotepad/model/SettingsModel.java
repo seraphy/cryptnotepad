@@ -1,10 +1,12 @@
 package jp.seraphyware.cryptnotepad.model;
 
+import java.beans.PropertyChangeListener;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import jp.seraphyware.cryptnotepad.crypt.SymCryptKeySource;
+import javax.swing.event.SwingPropertyChangeSupport;
 
+import jp.seraphyware.cryptnotepad.crypt.SymCryptKeySource;
 
 /**
  * キーファイルとパスフレーズ、文字コードなどの設定情報を保持するモデル.
@@ -20,6 +22,33 @@ public class SettingsModel implements Serializable, SymCryptKeySource {
      */
     private static final String DEFAULT_ENCODING = "UTF-8";
 
+    /**
+     * プロパティ変更サポート
+     */
+    private SwingPropertyChangeSupport propChange = new SwingPropertyChangeSupport(
+            this);
+
+    @Override
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        propChange.addPropertyChangeListener(listener);
+    }
+
+    @Override
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        propChange.removePropertyChangeListener(listener);
+    }
+
+    @Override
+    public void addPropertyChangeListener(String propertyName,
+            PropertyChangeListener listener) {
+        propChange.addPropertyChangeListener(propertyName, listener);
+    }
+
+    @Override
+    public void removePropertyChangeListener(String propertyName,
+            PropertyChangeListener listener) {
+        propChange.removePropertyChangeListener(propertyName, listener);
+    }
 
     /**
      * 文字コード
@@ -62,11 +91,17 @@ public class SettingsModel implements Serializable, SymCryptKeySource {
         if (encoding == null || encoding.trim().length() == 0) {
             throw new IllegalArgumentException();
         }
+        String oldValue = this.encoding;
         this.encoding = encoding.trim();
+
+        propChange.firePropertyChange("encoding", oldValue, this.encoding);
     }
 
     public void setKeyFile(String keyFile) {
+        String oldValue = this.keyFile;
         this.keyFile = keyFile;
+
+        propChange.firePropertyChange("keyFile", oldValue, keyFile);
     }
 
     /**
@@ -84,6 +119,10 @@ public class SettingsModel implements Serializable, SymCryptKeySource {
         Arrays.fill(this.passphrase, '@');
 
         this.passphrase = passphrase;
+
+        // パスフレーズ変更を通知する.
+        // (実際の内容はイベントに含めない.)
+        propChange.firePropertyChange("passphrase", null, "*");
     }
 
     /**

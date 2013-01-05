@@ -19,7 +19,7 @@ public class SymCryptKeySaltFactory {
     /**
      * ファイルのハッシュ計算用
      */
-    private CalcurateFileHash calcFileHash = new CalcurateFileHash();
+    private CachedCalcurateFileHash calcFileHash = new CachedCalcurateFileHash();
 
     /**
      * デフォルトのソルトを取得する.
@@ -63,5 +63,13 @@ public class SymCryptKeySaltFactory {
                 return resultSalt;
             }
         };
+    }
+
+    /**
+     * キャッシュされたソルトをクリアする.
+     */
+    public void clearCaches() {
+        logger.log(Level.FINE, "clearCaches");
+        calcFileHash.clear();
     }
 }
