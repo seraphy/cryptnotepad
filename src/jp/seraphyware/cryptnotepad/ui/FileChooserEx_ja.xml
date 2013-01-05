@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment />
+  <entry key="confirm.title">確認</entry>
+  <entry key="confirm.overwrite">上書きしますか？</entry>
+</properties>

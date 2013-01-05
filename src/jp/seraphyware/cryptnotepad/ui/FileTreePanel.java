@@ -40,15 +40,46 @@ public class FileTreePanel extends JPanel {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 選択ファイルイベント用のコマンド名
+     */
+    public static final String COMMAND_SELECTFILE = "selectFile";
+
+    /**
+     * 選択ファイルプロパティ変更イベント用のキー
+     */
+    public static final String PROPERTY_SELECTEDFILE = "selectedFile";
+
+    /**
      * ロガー.<br>
      */
     private static final Logger logger = Logger.getLogger(FileTreePanel.class
             .getName());
 
+    /**
+     * ツリーモデル
+     */
     private DefaultTreeModel model;
 
+    /**
+     * ツリー
+     */
     private JTree tree;
 
+    /**
+     * イベントリスナのリスト
+     */
+    private final EventListenerList listeners = new EventListenerList();
+
+    /**
+     * 現在選択ファイル.<br>
+     * (フォーカスされているファイルではない.)<br>
+     */
+    private File selectedFile;
+
+
+    /**
+     * コンストラクタ
+     */
     public FileTreePanel() {
         super(new BorderLayout());
 
@@ -113,6 +144,9 @@ public class FileTreePanel extends JPanel {
         refresh();
     }
 
+    /**
+     * ツリーのファイル一覧をリフレッシュする.
+     */
     public void refresh() {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
         DefaultMutableTreeNode root = new DefaultMutableTreeNode(rootDir);
@@ -142,26 +176,36 @@ public class FileTreePanel extends JPanel {
         model.setRoot(root);
     }
 
-    protected void onDblClick() {
+    /**
+     * ツリー上で現在フォーカスされているファイルまたはディレクトリを取得する.<br>
+     * 該当がなければnullを返す.<br>
+     * @return 選択されているファイル、ディレクトリ、もしくはnull
+     */
+    public File getFocusedFile() {
         TreePath select = tree.getSelectionPath();
         if (select != null) {
             Object[] path = select.getPath();
             if (path != null && path.length > 0) {
                 DefaultMutableTreeNode node = (DefaultMutableTreeNode) path[path.length - 1];
                 File file = (File) node.getUserObject();
-                if (!file.isDirectory()) {
-                    setSelectedFile(file);
-                    ActionEvent e = new ActionEvent(this,
-                            ActionEvent.ACTION_PERFORMED, COMMAND_SELECTFILE);
-                    fireActionEvent(e);
-                }
+                return file;
             }
         }
+        return null;
     }
 
-    public static final String COMMAND_SELECTFILE = "selectFile";
-
-    private final EventListenerList listeners = new EventListenerList();
+    /**
+     * ダブルクリック時のハンドラ
+     */
+    protected void onDblClick() {
+        File file = getFocusedFile();
+        if (file != null && !file.isDirectory()) {
+            setSelectedFile(file);
+            ActionEvent e = new ActionEvent(this, ActionEvent.ACTION_PERFORMED,
+                    COMMAND_SELECTFILE);
+            fireActionEvent(e);
+        }
+    }
 
     public void addActionListener(ActionListener l) {
         listeners.add(ActionListener.class, l);
@@ -179,10 +223,6 @@ public class FileTreePanel extends JPanel {
             }
         }
     }
-
-    public static final String PROPERTY_SELECTEDFILE = "selectedFile";
-
-    private File selectedFile;
 
     public File getSelectedFile() {
         return selectedFile;

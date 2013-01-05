@@ -21,12 +21,14 @@ import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDesktopPane;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JInternalFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
+import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
@@ -138,7 +140,8 @@ public class MainFrame extends JFrame {
             // パスフレーズが未設定であればエラー表示し、設定画面を開くか問い合わせる.
             String message = resource.getString("error.password.required");
             String title = resource.getString("confirm.title");
-            int ret = JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION);
+            int ret = JOptionPane.showConfirmDialog(this, message, title,
+                    JOptionPane.YES_NO_OPTION);
             if (ret != JOptionPane.YES_OPTION) {
                 // 設定画面を開かない場合は、ここで終了.
                 return null;
@@ -249,7 +252,15 @@ public class MainFrame extends JFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                onDelete();
+                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // シフトキーとともにある場合
+                    onDeleteAny();
+
+                } else {
+                    // 通常
+                    File file = fileTreePanel.getFocusedFile();
+                    onDelete(file);
+                }
             }
         });
         JButton btnChangePw = new JButton(new AbstractAction(
@@ -307,7 +318,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * 既存のテキストドキュメント用のウィンドウを開く.
+     * 暗号化されたテキストドキュメント用のウィンドウを開く.
      * 
      * @param file
      *            ファイル (nullの場合は新規ドキュメント用)
@@ -329,12 +340,87 @@ public class MainFrame extends JFrame {
                 }
             }
         }
+
         // まだファイルが開かれていなければ開く.
         createChildFrame(file);
     }
 
-    protected void onDelete() {
-        JOptionPane.showMessageDialog(this, "Delete");
+    /**
+     * 最後に使用したファイル削除ディレクトリ.<br>
+     * なればnull.<br>
+     */
+    private File lastUseDeleteDir;
+
+    /**
+     * 任意のファイルを選択して削除する.
+     */
+    protected void onDeleteAny() {
+        JFileChooser fileChooser = FileChooserEx.createFileChooser(
+                lastUseDeleteDir, false);
+
+        // 複数選択可
+        fileChooser.setMultiSelectionEnabled(true);
+        fileChooser.setDialogTitle(resource.getString("secureerase.title"));
+
+        int ret = fileChooser.showOpenDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File[] files = fileChooser.getSelectedFiles();
+        if (files.length == 0) {
+            // 選択なし
+            return;
+        }
+
+        // 確認ダイアログ
+        String title = resource.getString("confirm.title");
+        String messageTmpl = resource.getString("confirm.erase.file");
+        String message = String.format(messageTmpl,
+                String.format("%d files", files.length));
+
+        ret = JOptionPane.showConfirmDialog(this, message, title,
+                JOptionPane.YES_NO_OPTION);
+        if (ret == JOptionPane.YES_OPTION) {
+            // 選択されたファイルをすべて削除する.
+            for (File file : files) {
+                try {
+                    if (file.exists() && !file.isDirectory()) {
+                        lastUseDeleteDir = file.getParentFile();
+                        CryptUtils.erase(file);
+                    }
+
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(this, ex);
+                }
+            }
+            fileTreePanel.refresh();
+        }
+    }
+
+    /**
+     * ファイルの削除
+     */
+    protected void onDelete(File file) {
+        if (file == null || file.isDirectory()) {
+            return;
+        }
+
+        String title = resource.getString("confirm.title");
+        String messageTmpl = resource.getString("confirm.erase.file");
+        String message = String.format(messageTmpl, file.getName());
+
+        int ret = JOptionPane.showConfirmDialog(this, message, title,
+                JOptionPane.YES_NO_OPTION);
+        if (ret == JOptionPane.YES_OPTION) {
+            try {
+                CryptUtils.erase(file);
+                fileTreePanel.refresh();
+
+            } catch (Exception ex) {
+                ErrorMessageHelper.showErrorDialog(this, ex);
+            }
+        }
     }
 
     protected void onChangePw() {

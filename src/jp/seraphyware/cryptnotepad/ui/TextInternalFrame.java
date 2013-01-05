@@ -364,43 +364,14 @@ public class TextInternalFrame extends JInternalFrame {
     }
 
     /**
-     * ファイルチューザを構築する.<br>
-     * 上書き確認を行うように拡張している.<br>
-     * 
-     * @param rootDir
-     *            初期ディレクトリ
-     * @return ファイルチューザー
-     */
-    private JFileChooser createFileChooser(File rootDir) {
-        JFileChooser fileChooser = new JFileChooser(rootDir) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void approveSelection() {
-                File selectedFile = getSelectedFile();
-                if (selectedFile != null && selectedFile.exists()) {
-                    String title = resource.getString("confirm.title");
-                    String message = resource.getString("confirm.overwrite");
-                    int ret = JOptionPane.showConfirmDialog(this, message,
-                            title, JOptionPane.YES_NO_OPTION);
-                    if (ret != JOptionPane.YES_OPTION) {
-                        return;
-                    }
-                }
-                super.approveSelection();
-            }
-        };
-        return fileChooser;
-    }
-
-    /**
      * ファイルを別名保存する.
      * 
      * @throws IOException
      */
     protected void onSaveAs() throws IOException {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
-        JFileChooser fileChooser = createFileChooser(rootDir);
+        JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
+                true);
         int ret = fileChooser.showSaveDialog(this);
         if (ret != JFileChooser.APPROVE_OPTION) {
             // OK以外
@@ -428,7 +399,8 @@ public class TextInternalFrame extends JInternalFrame {
      * テキストを平文で外部ファイルにエクスポートする.
      */
     protected void onExport() {
-        JFileChooser fileChooser = createFileChooser(lastUseExportDir);
+        JFileChooser fileChooser = FileChooserEx.createFileChooser(
+                lastUseExportDir, true);
         if (file != null) {
             String name = file.getName();
             fileChooser.setSelectedFile(new File(name));
