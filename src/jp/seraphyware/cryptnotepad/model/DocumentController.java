@@ -4,8 +4,10 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -65,17 +67,56 @@ public class DocumentController {
     }
 
     /**
-     * ファイルを復号化してテキストを取得する. ファイルがなければ空文字が返される.
+     * テキストファイルをロードする.<br>
+     * 
+     * @param file ファイル
+     * @param encoding 文字コード、nullの場合は設定に従う.
+     * @return 読み込まれたテキスト
+     * @throws IOException 失敗
+     */
+    public String loadText(File file, String encoding) throws IOException {
+        if (file == null || !file.exists()) {
+            return "";
+        }
+        
+        if (encoding == null || encoding.trim().length() == 0) {
+            encoding = settingsModel.getEncoding();
+        }
+        
+        StringBuilder buf = new StringBuilder();
+        char[] cbuf = new char[1024];
+        InputStreamReader reader = new InputStreamReader(new FileInputStream(
+                file), encoding);
+        try {
+            for (;;) {
+                int rd = reader.read(cbuf);
+                if (rd < 0) {
+                    break;
+                }
+                buf.append(cbuf, 0, rd);
+            }
+        } finally {
+            reader.close();
+        }
+        return buf.toString();
+    }
+
+    /**
+     * ファイルを復号化してコンテンツを取得する.<br>
+     * コンテンツがテキストであれば文字列が返される.<br>
+     * コンテンツが画像であればBufferedImageが返される.<br>
+     * それ以外のバイナリデータであればApplicationDataが返される.<br>
+     * ファイルがなければnullが返される.<br>
      * 
      * @param file
      *            ファイル
-     * @return 復号化されたテキスト
+     * @return 復号化されたテキストまたは画像またはApplicationData、もしくはnull
      * @throws IOException
      *             失敗
      */
     public Object decrypt(File file) throws IOException {
         if (file == null || !file.exists()) {
-            return "";
+            return null;
         }
 
         byte[] data = symCipher.decrypt(file);

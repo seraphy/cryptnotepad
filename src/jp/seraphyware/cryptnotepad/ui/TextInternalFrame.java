@@ -56,6 +56,8 @@ public class TextInternalFrame extends JInternalFrame {
 
     public static final String PROPERTY_FILE = "file";
 
+    public static final String PROPERTY_TEMPORARY_TITLE = "temporaryTitle";
+
     public static final String PROPERTY_MODIFIED = "modified";
 
     /**
@@ -77,6 +79,12 @@ public class TextInternalFrame extends JInternalFrame {
      * 対象ファイル、新規の場合はnull
      */
     private File file;
+
+    /**
+     * 一時的なタイトル.<br>
+     * (ファイルがnullの場合に用いられる.)<br>
+     */
+    private String temporaryTitle;
 
     /**
      * テキストエリア
@@ -216,8 +224,8 @@ public class TextInternalFrame extends JInternalFrame {
 
         Box btnPanel = Box.createHorizontalBox();
 
-        JButton btnFont = new JButton(new AbstractAction(resource
-                .getString("changeFont.button.title")) {
+        JButton btnFont = new JButton(new AbstractAction(
+                resource.getString("changeFont.button.title")) {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -230,8 +238,8 @@ public class TextInternalFrame extends JInternalFrame {
 
         btnPanel.add(Box.createHorizontalGlue());
 
-        JButton btnExport = new JButton(new AbstractAction(resource
-                .getString("export.button.title")) {
+        JButton btnExport = new JButton(new AbstractAction(
+                resource.getString("export.button.title")) {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -298,7 +306,12 @@ public class TextInternalFrame extends JInternalFrame {
         if (file != null) {
             title = file.getName();
 
+        } else if (temporaryTitle != null) {
+            // ファイルが未指定だが、一時的なタイトルが指定されている場合
+            title = temporaryTitle;
+
         } else {
+            // ファイルが未指定で一時的なタイトルも設定されていない場合はデフォルト名
             title = resource.getString("notitled.title");
         }
 
@@ -319,7 +332,12 @@ public class TextInternalFrame extends JInternalFrame {
         if (text == null) {
             text = "";
         }
+
+        // テキストを設定しなおす.
         area.setText(text);
+
+        // 現在のUndo/Redo情報をクリアする.
+        undoManager.discardAllEdits();
 
         setModified(false);
     }
@@ -356,6 +374,36 @@ public class TextInternalFrame extends JInternalFrame {
         updateTitle();
 
         firePropertyChange(PROPERTY_FILE, oldValue, file);
+    }
+
+    public String getTemporaryTitle() {
+        return temporaryTitle;
+    }
+
+    /**
+     * 一時的なタイトルを設定する.<br>
+     * ファイル名が未指定の場合に用いられる.<br>
+     * その場合、タイトルも変更される.<br>
+     * 
+     * @param temporaryTitle
+     */
+    public void setTemporaryTitle(String temporaryTitle) {
+        if (temporaryTitle != null) {
+            // タイトルはトリムされる.
+            temporaryTitle = temporaryTitle.trim();
+            if (temporaryTitle.length() == 0) {
+                // トリム後、空文字になる場合はnull
+                temporaryTitle = null;
+            }
+        }
+
+        assert temporaryTitle == null || temporaryTitle.trim().length() > 0;
+        String oldValue = this.temporaryTitle;
+        this.temporaryTitle = temporaryTitle;
+
+        updateTitle();
+
+        firePropertyChange(PROPERTY_TEMPORARY_TITLE, oldValue, temporaryTitle);
     }
 
     /**
@@ -407,6 +455,14 @@ public class TextInternalFrame extends JInternalFrame {
         File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
         JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
                 true);
+
+        if (file != null) {
+            fileChooser.setSelectedFile(file);
+
+        } else if (temporaryTitle != null) {
+            fileChooser.setSelectedFile(new File(temporaryTitle));
+        }
+
         int ret = fileChooser.showSaveDialog(this);
         if (ret != JFileChooser.APPROVE_OPTION) {
             // OK以外

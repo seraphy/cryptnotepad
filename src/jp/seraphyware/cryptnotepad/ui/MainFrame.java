@@ -13,6 +13,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyVetoException;
 import java.io.File;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -20,6 +22,7 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -133,13 +136,13 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * MDI子ウィンドウを開く
+     * テキストドキュメント用のMDI子ウィンドウを開く
      * 
      * @param file
-     *            対象ファイル
+     *            対象ファイル、nullの場合は新規ドキュメントを開く.
      * @return 生成された子ウィンドウ、生成できなければnull
      */
-    protected JInternalFrame createChildFrame(File file) {
+    protected TextInternalFrame createTextInternalFrame(File file) {
 
         // パスフレーズの有無を確認する.
         while (!documentController.getSettingsModel().isValid()) {
@@ -253,7 +256,7 @@ public class MainFrame extends JFrame {
             }
         });
         btnNew.setToolTipText(resource.getString("new.button.tooltip"));
-        
+
         JButton btnDelete = new JButton(new AbstractAction(
                 resource.getString("delete.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -278,8 +281,15 @@ public class MainFrame extends JFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // 「開く」ボタンを押された場合、フォーカスされているアイテムをオープンする.
-                onOpenFile(fileTreePanel.getFocusedFile());
+                // 「開く」ボタンを押された場合
+                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // シフトキーとともにある場合は任意ファイルを開く.
+                    onOpenAny();
+
+                } else {
+                    // 通常の場合はフォーカスされたアイテムをオープンする.
+                    onOpenFile(fileTreePanel.getFocusedFile());
+                }
             }
         });
         btnOpen.setToolTipText(resource.getString("open.button.tooltip"));
@@ -327,7 +337,7 @@ public class MainFrame extends JFrame {
      */
     protected void onNew() {
         // 新規にテキストドキュメントを開く.
-        createChildFrame(null);
+        createTextInternalFrame(null);
     }
 
     /**
@@ -358,7 +368,69 @@ public class MainFrame extends JFrame {
         }
 
         // まだファイルが開かれていなければ開く.
-        createChildFrame(file);
+        createTextInternalFrame(file);
+    }
+
+    /**
+     * 任意の非暗号化ファイルを開く.
+     */
+    protected void onOpenAny() {
+        JFileChooser fileChooser = FileChooserEx.createFileChooser(
+                appConfig.getLastUseDir(), false);
+        int ret = fileChooser.showOpenDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File file = fileChooser.getSelectedFile();
+        if (file == null) {
+            // 選択なし
+            return;
+        }
+        
+        // サポートされている文字コード一覧の取得
+        ArrayList<String> encodingNames = new ArrayList<String>();
+        for (String name : Charset.availableCharsets().keySet()) {
+            encodingNames.add(name);
+        }
+        String defaultEncoding = appConfig.getLastUseImportTextEncoding();
+        if (defaultEncoding == null || defaultEncoding.trim().length() == 0) {
+            defaultEncoding = Charset.defaultCharset().name();
+        }
+        
+        // 文字コードの選択ダイアログ
+        JComboBox encodingCombo = new JComboBox(
+                encodingNames.toArray(new String[encodingNames.size()]));
+        encodingCombo.setSelectedItem(defaultEncoding);
+        
+        ret = JOptionPane.showConfirmDialog(this, encodingCombo, "Choose Charset", JOptionPane.YES_NO_OPTION);
+        if (ret != JOptionPane.YES_OPTION) {
+            return;
+        }
+        String encoding = (String)encodingCombo.getSelectedItem();
+        if (encoding == null) {
+            return;
+        }
+        appConfig.setLastUseImportTextEncoding(encoding);
+
+        // 平文ファイルを読み込む
+        String doc;
+        try {
+            doc = documentController.loadText(file, encoding);
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(this, ex);
+            return;
+        }
+
+        // 新規にテキストドキュメントを開く.
+        TextInternalFrame internalFrame = createTextInternalFrame(null);
+
+        // 読み込んだファイルの内容とファイル名を設定する.
+        // (未保存のドキュメントとして扱われる)
+        internalFrame.setTemporaryTitle(file.getName());
+        internalFrame.setText(doc);
+        internalFrame.setModified(true); // 編集中としてマークする.
     }
 
     /**
@@ -427,7 +499,7 @@ public class MainFrame extends JFrame {
             try {
                 // ランダム値で埋めてからファイルエントリを削除する.
                 CryptUtils.erase(file);
-                
+
                 // ファイル一覧を更新する.
                 fileTreePanel.refresh();
 

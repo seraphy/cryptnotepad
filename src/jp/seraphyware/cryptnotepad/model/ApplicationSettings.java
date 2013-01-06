@@ -57,6 +57,11 @@ public final class ApplicationSettings implements Serializable {
     private File lastUseDir;
 
     /**
+     * 最後にインポートに使用した文字コード
+     */
+    private String lastUseImportTextEncoding;
+
+    /**
      * メインフレームの幅
      */
     private int mainFrameWidth = 600;
@@ -133,6 +138,17 @@ public final class ApplicationSettings implements Serializable {
         propChange.firePropertyChange("lastUseDir", oldValue, lastUseDir);
     }
 
+    public String getLastUseImportTextEncoding() {
+        return lastUseImportTextEncoding;
+    }
+
+    public void setLastUseImportTextEncoding(String lastUseImportTextEncoding) {
+        String oldValue = this.lastUseImportTextEncoding;
+        this.lastUseImportTextEncoding = lastUseImportTextEncoding;
+        propChange.firePropertyChange("lastUseImportTextEncoding", oldValue,
+                lastUseImportTextEncoding);
+    }
+
     public int getMainFrameWidth() {
         return mainFrameWidth;
     }
@@ -196,6 +212,9 @@ public final class ApplicationSettings implements Serializable {
         // 設定項目
         props.setProperty("lastUseDir",
                 (lastUseDir == null) ? "" : lastUseDir.getAbsolutePath());
+        props.setProperty("lastUseImportTextEncoding",
+                (lastUseImportTextEncoding == null) ? ""
+                        : lastUseImportTextEncoding);
         props.setProperty("mainFrameWidth", Integer.toString(mainFrameWidth));
         props.setProperty("mainFrameHeight", Integer.toString(mainFrameHeight));
         props.setProperty("fontName", (fontName == null) ? "" : fontName);
@@ -204,7 +223,7 @@ public final class ApplicationSettings implements Serializable {
         props.setProperty("keyFile", (keyFile == null) ? "" : keyFile);
 
         logger.log(Level.FINE, "appConfig=" + props);
-        
+
         // ファイルへの書き込み
         OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
         try {
@@ -232,6 +251,7 @@ public final class ApplicationSettings implements Serializable {
         }
 
         lastUseDir = parseFile(props.getProperty("lastUseDir"), lastUseDir);
+        lastUseImportTextEncoding = props.getProperty("lastUseImportTextEncoding");
         mainFrameWidth = parseInt(props.getProperty("mainFrameWidth"),
                 mainFrameWidth);
         mainFrameHeight = parseInt(props.getProperty("mainFrameHeight"),
