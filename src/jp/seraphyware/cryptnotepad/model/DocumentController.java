@@ -32,6 +32,11 @@ public class DocumentController {
             .getLogger(DocumentController.class.getName());
 
     /**
+     * アプリケーション設定
+     */
+    private ApplicationSettings appConfig;
+
+    /**
      * 設定モデル
      */
     private SettingsModel settingsModel;
@@ -45,6 +50,9 @@ public class DocumentController {
      * コンストラクタ
      */
     public DocumentController() {
+        // アプリケーション設定
+        appConfig = ApplicationSettings.getInstance();
+
         // 設定モデルインスタンスの構築
         settingsModel = new SettingsModel();
 
@@ -62,6 +70,70 @@ public class DocumentController {
 
     public SymCipher getSymCipher() {
         return symCipher;
+    }
+
+    /**
+     * 拡張子からContent-Type(疑似)を返す.<br>
+     * 不明な場合はnullを返す.<br>
+     * 
+     * @param file
+     *            ファイル
+     * @return 拡張子から判定されるContent-Type(疑似)、不明ならばnull
+     */
+    public String detectContentType(File file) {
+        if (file == null) {
+            return null;
+        }
+
+        // ファイルの拡張子を取り出す.
+        String lcFileName = file.getName().toLowerCase();
+        int pt = lcFileName.lastIndexOf('.');
+        String ext;
+        if (pt > 0) {
+            ext = lcFileName.substring(pt + 1);
+        } else {
+            ext = lcFileName;
+        }
+
+        if (isInExtensions(ext, appConfig.getExtensionsForText())) {
+            if (ext.equals("txt")) {
+                return "text/plain";
+            }
+            return "text/" + ext;
+        }
+
+        if (isInExtensions(ext, appConfig.getExtensionsForPicture())) {
+            if (ext.equals("jpg")) {
+                return "image/jpeg";
+            }
+            return "image/" + ext;
+        }
+
+        if (isInExtensions(ext, appConfig.getExtensionsForBinary())) {
+            return "application/" + ext;
+        }
+
+        // 不明
+        return null;
+    }
+
+    /**
+     * カンマ区切りの拡張子リストのなかに指定された拡張子があるか?
+     * @param ext 拡張子
+     * @param extensions カンマ区切りの拡張子のリスト
+     * @return リストに含まれる場合はtrue
+     */
+    protected boolean isInExtensions(String ext, String extensions) {
+        if (ext == null || extensions == null) {
+            return false;
+        }
+        for (String extension : extensions.split(",")) {
+            extension = extension.trim().toLowerCase();
+            if (ext.equals(extension)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

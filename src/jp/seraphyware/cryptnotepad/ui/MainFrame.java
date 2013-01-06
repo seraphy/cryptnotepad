@@ -221,7 +221,8 @@ public class MainFrame extends JFrame {
      *            バイナリデータ(画像)
      * @return 生成された子ウィンドウ、生成できなければnull
      */
-    protected PictureInternalFrame createPictureInternalFrame(File file, ApplicationData data) {
+    protected PictureInternalFrame createPictureInternalFrame(File file,
+            ApplicationData data) {
         // 画像表示用の子ウィンドウを作成する.
         final PictureInternalFrame internalFrame = new PictureInternalFrame(
                 documentController);
@@ -440,11 +441,11 @@ public class MainFrame extends JFrame {
         Object data = loadEncrypted(file);
         if (data != null && data instanceof String) {
             // テキストデータの場合
-            createTextInternalFrame(file, (String)data);
-            
+            createTextInternalFrame(file, (String) data);
+
         } else if (data != null && data instanceof ApplicationData) {
             // バイナリデータの場合(画像)
-            createPictureInternalFrame(file, (ApplicationData)data);
+            createPictureInternalFrame(file, (ApplicationData) data);
         }
     }
 
@@ -473,10 +474,19 @@ public class MainFrame extends JFrame {
         // 最後に使用したディレクトリとして記憶する.
         appConfig.setLastUseDir(file.getParentFile());
 
-        String lcFileName = file.getName().toLowerCase();
-        if (lcFileName.endsWith(".png") || lcFileName.endsWith(".jpeg")
-                || lcFileName.endsWith(".jpg")) {
-            // 画像タイプの場合はバイナリとして読み込む
+        // ファイル名からMIMEタイプを判定する.
+        String contentType = documentController.detectContentType(file);
+        if (contentType == null) {
+            // 不明であれば手動で選択する.
+            contentType = chooseContentType(file);
+            if (contentType == null) {
+                // キャンセルされた場合
+                return;
+            }
+        }
+
+        if (!contentType.startsWith("text/")) {
+            // テキスト以外(画像とバイナリ)の場合はバイナリとして読み込む
             byte[] buf;
             try {
                 buf = documentController.loadBinary(file);
@@ -490,22 +500,12 @@ public class MainFrame extends JFrame {
                 return;
             }
 
-            // MIMEタイプの算定
-            String typ = "unknown";
-            int pt = lcFileName.lastIndexOf('.');
-            if (pt > 0) {
-                typ = lcFileName.substring(pt + 1);
-                if ("jpg".equals(typ)) {
-                    typ = "jpeg";
-                }
-            }
-            String mime = "image/" + typ;
-
             // バイナリデータの構築
-            ApplicationData data = new ApplicationData(mime, buf);
+            ApplicationData data = new ApplicationData(contentType, buf);
 
             // 新規にバイナリドキュメントを開く.
-            PictureInternalFrame internalFrame = createPictureInternalFrame(null, data);
+            PictureInternalFrame internalFrame = createPictureInternalFrame(
+                    null, data);
 
             // 読み込んだファイルの内容とファイル名を設定する.
             // (未保存のドキュメントとして扱われる)
@@ -513,32 +513,11 @@ public class MainFrame extends JFrame {
             internalFrame.setModified(true); // 編集中としてマークする.
 
         } else {
-            // テキストタイプ
-            // サポートされている文字コード一覧の取得
-            ArrayList<String> encodingNames = new ArrayList<String>();
-            for (String name : Charset.availableCharsets().keySet()) {
-                encodingNames.add(name);
-            }
-            String defaultEncoding = appConfig.getLastUseImportTextEncoding();
-            if (defaultEncoding == null || defaultEncoding.trim().length() == 0) {
-                defaultEncoding = Charset.defaultCharset().name();
-            }
-
-            // 文字コードの選択ダイアログ
-            JComboBox encodingCombo = new JComboBox(
-                    encodingNames.toArray(new String[encodingNames.size()]));
-            encodingCombo.setSelectedItem(defaultEncoding);
-
-            ret = JOptionPane.showConfirmDialog(this, encodingCombo,
-                    "Choose Charset", JOptionPane.YES_NO_OPTION);
-            if (ret != JOptionPane.YES_OPTION) {
-                return;
-            }
-            String encoding = (String) encodingCombo.getSelectedItem();
+            // テキストの場合は、読み込み文字コードを選択する.
+            String encoding = chooseCharset();
             if (encoding == null) {
                 return;
             }
-            appConfig.setLastUseImportTextEncoding(encoding);
 
             // 平文ファイルを読み込む
             String doc;
@@ -558,6 +537,70 @@ public class MainFrame extends JFrame {
             internalFrame.setTemporaryTitle(file.getName());
             internalFrame.setModified(true); // 編集中としてマークする.
         }
+    }
+
+    /**
+     * 手動でContent-Typeを選択する.
+     * 
+     * @param file
+     *            ファイル
+     * @return 選択されたContentType、キャンセルした場合はnull
+     */
+    protected String chooseContentType(File file) {
+        if (file == null) {
+            throw new IllegalArgumentException();
+        }
+
+        String lcFileName = file.getName().toLowerCase();
+        int pt = lcFileName.lastIndexOf('.');
+        String ext = lcFileName.substring(pt + 1);
+
+        String[] options = { "text/plain", "text/" + ext, "image/" + ext,
+                "application/octet-stream", "application/" + ext };
+
+        JComboBox optionsCombo = new JComboBox(options);
+        String title = resource.getString("selectContentType.dialog.title");
+        int ret = JOptionPane.showConfirmDialog(this, optionsCombo,
+                title, JOptionPane.YES_NO_OPTION);
+        if (ret != JOptionPane.YES_OPTION) {
+            return null;
+        }
+        return (String) optionsCombo.getSelectedItem();
+    }
+
+    /**
+     * 外部ファイル取り込み用の文字コードを選択する.
+     * 
+     * @return 文字コード、キャンセルした場合はnull
+     */
+    protected String chooseCharset() {
+        // テキストタイプ
+        // サポートされている文字コード一覧の取得
+        ArrayList<String> encodingNames = new ArrayList<String>();
+        for (String name : Charset.availableCharsets().keySet()) {
+            encodingNames.add(name);
+        }
+        String defaultEncoding = appConfig.getLastUseImportTextEncoding();
+        if (defaultEncoding == null || defaultEncoding.trim().length() == 0) {
+            defaultEncoding = Charset.defaultCharset().name();
+        }
+
+        // 文字コードの選択ダイアログ
+        JComboBox encodingCombo = new JComboBox(
+                encodingNames.toArray(new String[encodingNames.size()]));
+        encodingCombo.setSelectedItem(defaultEncoding);
+
+        int ret = JOptionPane.showConfirmDialog(this, encodingCombo,
+                "Choose Charset", JOptionPane.YES_NO_OPTION);
+
+        String encoding = null;
+        if (ret == JOptionPane.YES_OPTION) {
+            encoding = (String) encodingCombo.getSelectedItem();
+            if (encoding != null) {
+                appConfig.setLastUseImportTextEncoding(encoding);
+            }
+        }
+        return encoding;
     }
 
     /**

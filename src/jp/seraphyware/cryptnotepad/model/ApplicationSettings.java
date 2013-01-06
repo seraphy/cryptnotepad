@@ -82,6 +82,21 @@ public final class ApplicationSettings implements Serializable {
     private int fontSize;
 
     /**
+     * テキストと判定する拡張子.(text/*)
+     */
+    private String extensionsForText = "txt,tsv,csv,tex,ini,url,xml,html,htm,js,java,c,h,cpp,hpp,vb,pl,py";
+
+    /**
+     * 画像と判定する拡張子.(image/*)
+     */
+    private String extensionsForPicture = "png,jpeg,jpg,gif,tif,tiff,bmp";
+
+    /**
+     * バイナリと判定する拡張子.(application/octet-stream)
+     */
+    private String extensionsForBinary = "doc,docx,xls,xlsx,pdf,rtf,odf";
+
+    /**
      * プライベートコンストラクタ
      */
     private ApplicationSettings() {
@@ -191,6 +206,39 @@ public final class ApplicationSettings implements Serializable {
         propChange.firePropertyChange("fontSize", oldValue, fontSize);
     }
 
+    public String getExtensionsForText() {
+        return extensionsForText;
+    }
+
+    public void setExtensionsForText(String extensionsForText) {
+        String oldValue = this.extensionsForText;
+        this.extensionsForText = extensionsForText;
+        propChange.firePropertyChange("extensionsForText", oldValue,
+                extensionsForText);
+    }
+
+    public String getExtensionsForPicture() {
+        return extensionsForPicture;
+    }
+
+    public void setExtensionsForPicture(String extensionsForPicture) {
+        String oldValue = this.extensionsForPicture;
+        this.extensionsForPicture = extensionsForPicture;
+        propChange.firePropertyChange("extensionsForPicture", oldValue,
+                extensionsForPicture);
+    }
+
+    public String getExtensionsForBinary() {
+        return extensionsForBinary;
+    }
+
+    public void setExtensionsForBinary(String extensionsForBinary) {
+        String oldValue = this.extensionsForBinary;
+        this.extensionsForBinary = extensionsForBinary;
+        propChange.firePropertyChange("extensionsForBinary", oldValue,
+                extensionsForBinary);
+    }
+
     /**
      * ファイルに保存する.
      * 
@@ -213,14 +261,21 @@ public final class ApplicationSettings implements Serializable {
         props.setProperty("lastUseDir",
                 (lastUseDir == null) ? "" : lastUseDir.getAbsolutePath());
         props.setProperty("lastUseImportTextEncoding",
-                (lastUseImportTextEncoding == null) ? ""
-                        : lastUseImportTextEncoding);
+                toSafeString(lastUseImportTextEncoding));
         props.setProperty("mainFrameWidth", Integer.toString(mainFrameWidth));
         props.setProperty("mainFrameHeight", Integer.toString(mainFrameHeight));
-        props.setProperty("fontName", (fontName == null) ? "" : fontName);
+
+        props.setProperty("fontName", toSafeString(fontName));
         props.setProperty("fontSize", Integer.toString(fontSize));
-        props.setProperty("encoding", (encoding == null) ? "" : encoding);
-        props.setProperty("keyFile", (keyFile == null) ? "" : keyFile);
+
+        props.setProperty("encoding", toSafeString(encoding));
+        props.setProperty("keyFile", toSafeString(keyFile));
+
+        props.setProperty("extensionsForText", toSafeString(extensionsForText));
+        props.setProperty("extensionsForPicture",
+                toSafeString(extensionsForPicture));
+        props.setProperty("extensionsForBinary",
+                toSafeString(extensionsForBinary));
 
         logger.log(Level.FINE, "appConfig=" + props);
 
@@ -251,15 +306,25 @@ public final class ApplicationSettings implements Serializable {
         }
 
         lastUseDir = parseFile(props.getProperty("lastUseDir"), lastUseDir);
-        lastUseImportTextEncoding = props.getProperty("lastUseImportTextEncoding");
+        lastUseImportTextEncoding = props
+                .getProperty("lastUseImportTextEncoding");
         mainFrameWidth = parseInt(props.getProperty("mainFrameWidth"),
                 mainFrameWidth);
         mainFrameHeight = parseInt(props.getProperty("mainFrameHeight"),
                 mainFrameHeight);
+
         fontName = props.getProperty("fontName");
         fontSize = parseInt(props.getProperty("fontSize"), fontSize);
+
         encoding = props.getProperty("encoding");
         keyFile = props.getProperty("keyFile");
+
+        extensionsForText = chooseString(
+                props.getProperty("extensionsForText"), extensionsForText);
+        extensionsForPicture = chooseString(
+                props.getProperty("extensionsForPicture"), extensionsForPicture);
+        extensionsForBinary = chooseString(
+                props.getProperty("extensionsForBinary"), extensionsForBinary);
     }
 
     /**
@@ -304,5 +369,36 @@ public final class ApplicationSettings implements Serializable {
             }
         }
         return defValue;
+    }
+
+    /**
+     * 非nullな文字列を返す.
+     * 
+     * @param value
+     *            文字列、nullの場合は空文字とみなす
+     * @return 文字列
+     */
+    private static String toSafeString(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value;
+    }
+
+    /**
+     * 引数aがnullまたは空文字であれば引数bを返す.<br>
+     * そうでなければaを返す.
+     * 
+     * @param a
+     *            文字列a
+     * @param b
+     *            文字列b
+     * @return 文字列aがnullまたは空文字でなければ文字列a,そうでなければ文字列b
+     */
+    private static String chooseString(String a, String b) {
+        if (a == null || a.trim().length() == 0) {
+            return b;
+        }
+        return a;
     }
 }
