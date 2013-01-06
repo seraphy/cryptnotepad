@@ -115,7 +115,8 @@ public class DocumentInternalFrame extends JInternalFrame {
         };
 
         ActionMap am = this.getActionMap();
-        InputMap im = this.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        InputMap im = this
+                .getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
         im.put(KeyStroke.getKeyStroke('W', Event.CTRL_MASK), actClose);
         am.put(actClose, actClose);
@@ -255,6 +256,12 @@ public class DocumentInternalFrame extends JInternalFrame {
     }
 
     /**
+     * 最後に使用した暗号化用ディレクトリ.<br>
+     * (永続化はしない.)
+     */
+    private static File lastUseEncryptedDir;
+
+    /**
      * 別名保存します.<br>
      * このメソッドは新しいファイル名を選択し、そのファイル名に切り替えたのちに、
      * コールバックを呼び出し、それが成功したら、ファイル名変更のイベントを発生させます.
@@ -268,7 +275,10 @@ public class DocumentInternalFrame extends JInternalFrame {
         }
 
         // アプリケーションベース上のフォルダを既定とする.
-        File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
+        File rootDir = lastUseEncryptedDir;
+        if (rootDir == null) {
+            rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
+        }
         JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
                 true);
 
@@ -289,6 +299,7 @@ public class DocumentInternalFrame extends JInternalFrame {
         }
 
         File file = fileChooser.getSelectedFile();
+        lastUseEncryptedDir = file.getParentFile();
 
         // 新しいファイル名を設定する.
         File oldValue = this.file;

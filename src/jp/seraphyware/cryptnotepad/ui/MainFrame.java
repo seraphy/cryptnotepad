@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -15,6 +16,7 @@ import java.beans.PropertyVetoException;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,12 +32,14 @@ import javax.swing.JInternalFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
 
 import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
 import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
+import jp.seraphyware.cryptnotepad.util.FileDropTarget;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
@@ -134,10 +138,37 @@ public class MainFrame extends JFrame {
         splitPane.add(desktop);
 
         contentPane.add(splitPane);
+
+        // ファイルのドロップを許可する.
+        // ドロップターゲットの設定
+        new DropTarget(this, new FileDropTarget() {
+            @Override
+            protected void onDropFiles(final List<File> dropFiles) {
+                if (dropFiles == null || dropFiles.isEmpty()) {
+                    return;
+                }
+                // インポートダイアログを開く.
+                // ドロップソースの処理がブロッキングしないように、
+                // ドロップハンドラの処理を終了してからインポートダイアログが開くようにする.
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        for (File dropFile : dropFiles) {
+                            openPlainFile(dropFile);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            protected void onException(Exception ex) {
+                ErrorMessageHelper.showErrorDialog(MainFrame.this, ex);
+            }
+        });
     }
 
     /**
-     * パスフレーズの有無を確認し、設定されていなければ設定ダイアログを開けるようにする. パスフレーズを設定されない場合はfalseを返す.
+     * パスフレーズの有無を確認し、設定されていなければ設定ダイアログを開けるようにする.<br>
+     * パスフレーズを設定されない場合はfalseを返す.<br>
      * 
      * @return パスフレーズが設定されていればtrue、されなかったらfalse
      */
@@ -273,7 +304,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * ファイル一覧パネルを作成する.
+     * ファイル一覧パネルを作成する.<br>
      * 
      * @return
      */
@@ -376,7 +407,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * ドキュメント名が変更されたことを通知される.
+     * ドキュメント名が変更されたことを通知される.<br>
      * 
      * @param internalFrame
      *            ドキュメントのウィンドウ
@@ -460,19 +491,38 @@ public class MainFrame extends JFrame {
 
         JFileChooser fileChooser = FileChooserEx.createFileChooser(
                 appConfig.getLastUseDir(), false);
+        fileChooser.setMultiSelectionEnabled(true);
+
         int ret = fileChooser.showOpenDialog(this);
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
         }
 
-        File file = fileChooser.getSelectedFile();
-        if (file == null) {
+        File[] files = fileChooser.getSelectedFiles();
+        if (files == null || files.length == 0) {
             // 選択なし
             return;
         }
 
-        // 最後に使用したディレクトリとして記憶する.
-        appConfig.setLastUseDir(file.getParentFile());
+        // 最後に使用したディレクトリとして記憶する.(代表として先頭ファイル)
+        appConfig.setLastUseDir(files[0].getParentFile());
+
+        // 複数ファイルを連続して開く.
+        for (File file : files) {
+            openPlainFile(file);
+        }
+    }
+
+    /**
+     * 非暗号化ファイルを開く.
+     * 
+     * @param file
+     *            ファイル
+     */
+    protected void openPlainFile(File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
 
         // ファイル名からMIMEタイプを判定する.
         String contentType = documentController.detectContentType(file);
@@ -560,8 +610,8 @@ public class MainFrame extends JFrame {
 
         JComboBox optionsCombo = new JComboBox(options);
         String title = resource.getString("selectContentType.dialog.title");
-        int ret = JOptionPane.showConfirmDialog(this, optionsCombo,
-                title, JOptionPane.YES_NO_OPTION);
+        int ret = JOptionPane.showConfirmDialog(this, optionsCombo, title,
+                JOptionPane.YES_NO_OPTION);
         if (ret != JOptionPane.YES_OPTION) {
             return null;
         }

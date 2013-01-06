@@ -154,7 +154,7 @@ public class PictureInternalFrame extends DocumentInternalFrame {
                 try {
                     byte[] buf = data.getData();
                     if (buf != null && buf.length > 0) {
-                        ImageIO.setUseCache(false);
+                        ImageIO.setUseCache(false); // 一時ディレクトリに書き込まないように
                         ByteArrayInputStream is = new ByteArrayInputStream(buf);
                         try {
                             img = ImageIO.read(is);
