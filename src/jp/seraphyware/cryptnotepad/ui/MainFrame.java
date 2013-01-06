@@ -223,10 +223,8 @@ public class MainFrame extends JFrame {
         fileTreePanel.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                File file = fileTreePanel.getSelectedFile();
-                if (file != null) {
-                    onOpenFile(file);
-                }
+                // ダブルクリックされた場合、「選択ファイル」をオープンする.
+                onOpenFile(fileTreePanel.getSelectedFile());
             }
         });
 
@@ -238,6 +236,7 @@ public class MainFrame extends JFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                // 設定ダイアログを開く.
                 onSettings();
             }
         });
@@ -249,6 +248,7 @@ public class MainFrame extends JFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                // 新規ドキュメントを開く
                 onNew();
             }
         });
@@ -259,28 +259,28 @@ public class MainFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-                    // シフトキーとともにある場合
+                    // シフトキーとともにある場合は任意ファイルを削除する.
                     onDeleteAny();
 
                 } else {
-                    // 通常
-                    File file = fileTreePanel.getFocusedFile();
-                    onDelete(file);
+                    // 通常の場合はフォーカスされたアイテムを削除する.
+                    onDelete(fileTreePanel.getFocusedFile());
                 }
             }
         });
-        JButton btnChangePw = new JButton(new AbstractAction(
-                resource.getString("password.button.title")) {
+        JButton btnOpen = new JButton(new AbstractAction(
+                resource.getString("open.button.title")) {
             private static final long serialVersionUID = 1L;
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                onChangePw();
+                // 「開く」ボタンを押された場合、フォーカスされているアイテムをオープンする.
+                onOpenFile(fileTreePanel.getFocusedFile());
             }
         });
         btnPanel.add(btnNew);
         btnPanel.add(btnDelete);
-        btnPanel.add(btnChangePw);
+        btnPanel.add(btnOpen);
 
         leftPanel.add(btnSettings, BorderLayout.NORTH);
         leftPanel.add(fileTreePanel, BorderLayout.CENTER);
@@ -320,16 +320,20 @@ public class MainFrame extends JFrame {
      * 新規用にテキストウィンドウを開く.
      */
     protected void onNew() {
-        onOpenFile(null);
+        // 新規にテキストドキュメントを開く.
+        createChildFrame(null);
     }
 
     /**
      * 暗号化されたテキストドキュメント用のウィンドウを開く.
      * 
      * @param file
-     *            ファイル (nullの場合は新規ドキュメント用)
+     *            ファイル 、nullの場合は何もしない.
      */
     protected void onOpenFile(File file) {
+        if (file == null) {
+            return;
+        }
         for (JInternalFrame child : desktop.getAllFrames()) {
             if (!child.isDisplayable() || !child.isVisible()) {
                 // 表示されていないか、破棄されたものは除外する.
@@ -403,6 +407,7 @@ public class MainFrame extends JFrame {
      */
     protected void onDelete(File file) {
         if (file == null || file.isDirectory()) {
+            // ファイルが指定されていないか、ファイルでなければスキップする.
             return;
         }
 
@@ -414,7 +419,10 @@ public class MainFrame extends JFrame {
                 JOptionPane.YES_NO_OPTION);
         if (ret == JOptionPane.YES_OPTION) {
             try {
+                // ランダム値で埋めてからファイルエントリを削除する.
                 CryptUtils.erase(file);
+                
+                // ファイル一覧を更新する.
                 fileTreePanel.refresh();
 
             } catch (Exception ex) {
@@ -423,12 +431,8 @@ public class MainFrame extends JFrame {
         }
     }
 
-    protected void onChangePw() {
-        JOptionPane.showMessageDialog(this, "ChangePw");
-    }
-
     /**
-     * 破棄する場合
+     * メインフレームを破棄する場合
      */
     protected void onClosing() {
         // 変更されていない子ウィンドウがあるか検査する.
@@ -441,6 +445,7 @@ public class MainFrame extends JFrame {
             if (child instanceof TextInternalFrame) {
                 TextInternalFrame c = (TextInternalFrame) child;
                 if (c.isModified()) {
+                    // 未保存のドキュメントがあるので確認が必要.
                     needConfirm = true;
                     break;
                 }
@@ -454,6 +459,7 @@ public class MainFrame extends JFrame {
             int ret = JOptionPane.showConfirmDialog(this, message, title,
                     JOptionPane.YES_NO_OPTION);
             if (ret != JOptionPane.YES_OPTION) {
+                // まだ閉じない.
                 return;
             }
         }

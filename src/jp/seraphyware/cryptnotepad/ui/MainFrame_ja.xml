@@ -7,7 +7,7 @@
   <entry key="settings.button.title">設定</entry>
   <entry key="new.button.title">新規</entry>
   <entry key="delete.button.title">削除</entry>
-  <entry key="password.button.title">パス</entry>
+  <entry key="open.button.title">開く</entry>
 
   <entry key="error.password.required">パスフレーズが設定されていません.設定しますか？</entry>
 

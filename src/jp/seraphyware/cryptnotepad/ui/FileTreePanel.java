@@ -159,10 +159,20 @@ public class FileTreePanel extends JPanel {
             File dir = (File) dirNode.getUserObject();
 
             logger.log(Level.FINE, "dir=" + dir);
-            File[] files = dir.listFiles();
+            File[] files;
+            try {
+                files = dir.listFiles();
+                
+            } catch (Exception ex) {
+                // ファイル一覧の取得に失敗した場合は空とする.
+                logger.log(Level.INFO, "fileTreeTraversalError." + ex, ex);
+                files = new File[0];
+            }
+
             Arrays.sort(files);
+            
             for (File file : files) {
-                logger.log(Level.FINE, "file=" + file);
+                logger.log(Level.FINER, "file=" + file);
 
                 DefaultMutableTreeNode node = new DefaultMutableTreeNode(file);
                 dirNode.add(node);
