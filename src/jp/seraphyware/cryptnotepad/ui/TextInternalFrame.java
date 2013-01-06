@@ -22,7 +22,6 @@ import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
@@ -39,9 +38,7 @@ import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
 
-import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
-import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
@@ -50,41 +47,14 @@ import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
  * 
  * @author seraphy
  */
-public class TextInternalFrame extends JInternalFrame {
+public class TextInternalFrame extends DocumentInternalFrame {
 
     private static final long serialVersionUID = -6664897509335391245L;
-
-    public static final String PROPERTY_FILE = "file";
-
-    public static final String PROPERTY_TEMPORARY_TITLE = "temporaryTitle";
-
-    public static final String PROPERTY_MODIFIED = "modified";
-
-    /**
-     * アプリケーション設定
-     */
-    private ApplicationSettings appConfig;
-
-    /**
-     * ドキュメントコントローラ
-     */
-    private DocumentController documentController;
 
     /**
      * リソースバンドル
      */
     private ResourceBundle resource;
-
-    /**
-     * 対象ファイル、新規の場合はnull
-     */
-    private File file;
-
-    /**
-     * 一時的なタイトル.<br>
-     * (ファイルがnullの場合に用いられる.)<br>
-     */
-    private String temporaryTitle;
 
     /**
      * テキストエリア
@@ -97,22 +67,13 @@ public class TextInternalFrame extends JInternalFrame {
     private UndoManager undoManager;
 
     /**
-     * 変更フラグ
-     */
-    private boolean modified;
-
-    /**
      * コンストラクタ
      * 
      * @param documentController
      * @param file
      */
     public TextInternalFrame(DocumentController documentController) {
-        if (documentController == null) {
-            dispose();
-            throw new IllegalArgumentException();
-        }
-
+        super(documentController);
         setDefaultCloseOperation(JInternalFrame.DO_NOTHING_ON_CLOSE);
         addInternalFrameListener(new InternalFrameAdapter() {
             @Override
@@ -121,8 +82,6 @@ public class TextInternalFrame extends JInternalFrame {
             }
         });
 
-        this.documentController = documentController;
-        this.appConfig = ApplicationSettings.getInstance();
         this.resource = ResourceBundle.getBundle(getClass().getName(),
                 XMLResourceBundle.CONTROL);
 
@@ -193,18 +152,14 @@ public class TextInternalFrame extends JInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    if (TextInternalFrame.this.file == null
-                            || (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-                        // 新規ドキュメントであるか、シフトキーとともに押された場合
-                        onSaveAs();
-                    } else {
-                        // 上書き保存
-                        onSave();
-                    }
-                } catch (Exception ex) {
-                    ErrorMessageHelper.showErrorDialog(TextInternalFrame.this,
-                            ex);
+                if (!isExistFile()
+                        || (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // 新規ドキュメントであるか、シフトキーとともに押された場合
+                    onSaveAs();
+
+                } else {
+                    // 上書き保存
+                    onSave();
                 }
             }
         };
@@ -299,30 +254,6 @@ public class TextInternalFrame extends JInternalFrame {
     }
 
     /**
-     * ファイル名からウィンドウのタイトルを設定する. ファイルが未指定であれば"untitled"とする.
-     */
-    private void updateTitle() {
-        String title;
-        if (file != null) {
-            title = file.getName();
-
-        } else if (temporaryTitle != null) {
-            // ファイルが未指定だが、一時的なタイトルが指定されている場合
-            title = temporaryTitle;
-
-        } else {
-            // ファイルが未指定で一時的なタイトルも設定されていない場合はデフォルト名
-            title = resource.getString("notitled.title");
-        }
-
-        String marker = "";
-        if (isModified()) {
-            marker = "*";
-        }
-        setTitle(marker + title);
-    }
-
-    /**
      * 編集するテキストを設定する.<br>
      * 変更フラグはリセットされる.
      * 
@@ -352,98 +283,32 @@ public class TextInternalFrame extends JInternalFrame {
     }
 
     /**
-     * 現在のファイル、未指定であればnull
-     * 
-     * @return ファイル
-     */
-    public File getFile() {
-        return file;
-    }
-
-    /**
-     * 現在のファイル名を設定する.<br>
-     * タイトルも変更される.
-     * 
-     * @param file
-     *            ファイル
-     */
-    public void setFile(File file) {
-        File oldValue = this.file;
-        this.file = file;
-
-        updateTitle();
-
-        firePropertyChange(PROPERTY_FILE, oldValue, file);
-    }
-
-    public String getTemporaryTitle() {
-        return temporaryTitle;
-    }
-
-    /**
-     * 一時的なタイトルを設定する.<br>
-     * ファイル名が未指定の場合に用いられる.<br>
-     * その場合、タイトルも変更される.<br>
-     * 
-     * @param temporaryTitle
-     */
-    public void setTemporaryTitle(String temporaryTitle) {
-        if (temporaryTitle != null) {
-            // タイトルはトリムされる.
-            temporaryTitle = temporaryTitle.trim();
-            if (temporaryTitle.length() == 0) {
-                // トリム後、空文字になる場合はnull
-                temporaryTitle = null;
-            }
-        }
-
-        assert temporaryTitle == null || temporaryTitle.trim().length() > 0;
-        String oldValue = this.temporaryTitle;
-        this.temporaryTitle = temporaryTitle;
-
-        updateTitle();
-
-        firePropertyChange(PROPERTY_TEMPORARY_TITLE, oldValue, temporaryTitle);
-    }
-
-    /**
-     * 変更フラグを更新する.<br>
-     * タイトルの変更マーカーも変更される.
-     * 
-     * @param modified
-     */
-    public void setModified(boolean modified) {
-        boolean oldValue = this.modified;
-        this.modified = modified;
-        updateTitle();
-        firePropertyChange(PROPERTY_MODIFIED, oldValue, modified);
-    }
-
-    public boolean isModified() {
-        return modified;
-    }
-
-    /**
      * ファイルを上書き保存する.
      * 
      * @throws IOException
      */
-    protected void onSave() throws IOException {
-        assert file != null;
-
-        String doc = area.getText();
-
-        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-        // ウェイトカーソルにする.
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    protected void onSave() {
         try {
-            documentController.encryptText(file, doc);
+            File file = getFile();
+            assert file != null;
 
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
+            String doc = area.getText();
+
+            // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+            // ウェイトカーソルにする.
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            try {
+                documentController.encryptText(file, doc);
+
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
+            }
+
+            setModified(false);
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(this, ex);
         }
-
-        setModified(false);
     }
 
     /**
@@ -451,58 +316,25 @@ public class TextInternalFrame extends JInternalFrame {
      * 
      * @throws IOException
      */
-    protected void onSaveAs() throws IOException {
-        File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
-        JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
-                true);
-
-        if (file != null) {
-            fileChooser.setSelectedFile(file);
-
-        } else if (temporaryTitle != null) {
-            fileChooser.setSelectedFile(new File(temporaryTitle));
-        }
-
-        int ret = fileChooser.showSaveDialog(this);
-        if (ret != JFileChooser.APPROVE_OPTION) {
-            // OK以外
-            return;
-        }
-
-        File file = fileChooser.getSelectedFile();
-
-        File oldValue = this.file;
-        this.file = file;
-        updateTitle();
-
-        onSave();
-
-        firePropertyChange(PROPERTY_FILE, oldValue, file);
+    protected void onSaveAs() {
+        saveAs(new Runnable() {
+            @Override
+            public void run() {
+                onSave();
+            }
+        });
     }
 
     /**
      * テキストを平文で外部ファイルにエクスポートする.
      */
     protected void onExport() {
-        JFileChooser fileChooser = FileChooserEx.createFileChooser(
-                appConfig.getLastUseDir(), true);
-        if (file != null) {
-            String name = file.getName();
-            fileChooser.setSelectedFile(new File(name));
-        }
-
-        int ret = fileChooser.showSaveDialog(this);
-        if (ret != JFileChooser.APPROVE_OPTION) {
-            // OK以外
-            return;
-        }
-
         try {
-            File file = fileChooser.getSelectedFile();
-            appConfig.setLastUseDir(file.getParentFile());
-
-            String doc = area.getText();
-            documentController.savePlainText(file, doc);
+            File file = showExportDialog();
+            if (file != null) {
+                String doc = area.getText();
+                documentController.savePlainText(file, doc);
+            }
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(TextInternalFrame.this, ex);

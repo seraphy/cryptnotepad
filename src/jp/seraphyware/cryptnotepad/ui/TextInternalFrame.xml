@@ -2,8 +2,6 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
   <comment />
-  <entry key="notitled.title">No-Titled</entry>
-  
   <entry key="changeFont.button.title">Font</entry>
   <entry key="changeFont.button.tooltip">Choose the font</entry>
   <entry key="save.button.title">Save*</entry>

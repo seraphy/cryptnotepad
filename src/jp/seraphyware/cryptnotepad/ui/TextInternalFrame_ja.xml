@@ -2,8 +2,6 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
   <comment />
-  <entry key="notitled.title">無題</entry>
-  
   <entry key="changeFont.button.title">Font</entry>
   <entry key="changeFont.button.tooltip">表示フォントを選択します.</entry>
   <entry key="save.button.title">保存*</entry>
