@@ -32,6 +32,7 @@ import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 
 import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
+import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
@@ -136,15 +137,11 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * テキストドキュメント用のMDI子ウィンドウを開く
+     * パスフレーズの有無を確認し、設定されていなければ設定ダイアログを開けるようにする. パスフレーズを設定されない場合はfalseを返す.
      * 
-     * @param file
-     *            対象ファイル、nullの場合は新規ドキュメントを開く.
-     * @return 生成された子ウィンドウ、生成できなければnull
+     * @return パスフレーズが設定されていればtrue、されなかったらfalse
      */
-    protected TextInternalFrame createTextInternalFrame(File file) {
-
-        // パスフレーズの有無を確認する.
+    protected boolean checkPassphrase() {
         while (!documentController.getSettingsModel().isValid()) {
             // パスフレーズが未設定であればエラー表示し、設定画面を開くか問い合わせる.
             String message = resource.getString("error.password.required");
@@ -152,31 +149,56 @@ public class MainFrame extends JFrame {
             int ret = JOptionPane.showConfirmDialog(this, message, title,
                     JOptionPane.YES_NO_OPTION);
             if (ret != JOptionPane.YES_OPTION) {
-                // 設定画面を開かない場合は、ここで終了.
-                return null;
+                // 設定画面を開かない場合はfalseを返す.
+                return false;
             }
             // 設定画面を開く.(モーダル)
             onSettings();
         }
+        return true;
+    }
 
-        String doc;
-        try {
-            // ファイルをロードする.
-            // 外部URLのファイルハッシュつきの場合は復号化に時間がかかるのでウェイトカーソルをつける.
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    /**
+     * 暗号化されたファイルをロードする.<br>
+     * 引数がnullの場合はnullを返す.<br>
+     * 
+     * @param file
+     *            暗号されたファイル
+     * @return 復号化されたデータ、もしくはnull
+     */
+    protected Object loadEncrypted(File file) {
+        if (file != null) {
             try {
-                doc = (String) documentController.decrypt(file);
+                // ファイルをロードする.
+                // 外部URLのファイルハッシュつきの場合は復号化に時間がかかるのでウェイトカーソルをつける.
+                setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                try {
+                    return documentController.decrypt(file);
 
-            } finally {
-                setCursor(Cursor.getDefaultCursor());
+                } finally {
+                    setCursor(Cursor.getDefaultCursor());
+                }
+
+            } catch (Exception ex) {
+                // ロードに失敗したらエラー表示し、ウィンドウは開かない.
+                ErrorMessageHelper.showErrorDialog(this, ex);
+                return null;
             }
-
-        } catch (Exception ex) {
-            // ロードに失敗したらエラー表示し、ウィンドウは開かない.
-            ErrorMessageHelper.showErrorDialog(this, ex);
-            return null;
         }
+        return null;
+    }
 
+    /**
+     * テキストドキュメント用のMDI子ウィンドウを開く
+     * 
+     * @param file
+     *            対象ファイル、nullの場合は新規ドキュメントを開く.
+     * @param doc
+     *            テキスト
+     * 
+     * @return 生成された子ウィンドウ、生成できなければnull
+     */
+    protected TextInternalFrame createTextInternalFrame(File file, String doc) {
         // テキスト編集用の子ウィンドウを作成する.
         final TextInternalFrame internalFrame = new TextInternalFrame(
                 documentController);
@@ -185,6 +207,44 @@ public class MainFrame extends JFrame {
         internalFrame.setText(doc);
         internalFrame.setFile(file);
 
+        addInternalFrame(internalFrame);
+
+        return internalFrame;
+    }
+
+    /**
+     * 画像表示用のMDI子ウィンドウを開く.
+     * 
+     * @param file
+     *            対象ファイル、nullの場合は新規ドキュメントを開く.
+     * @param data
+     *            バイナリデータ(画像)
+     * @return 生成された子ウィンドウ、生成できなければnull
+     */
+    protected PictureInternalFrame createPictureInternalFrame(File file, ApplicationData data) {
+        // 画像表示用の子ウィンドウを作成する.
+        final PictureInternalFrame internalFrame = new PictureInternalFrame(
+                documentController);
+
+        // テキストとファイル名を設定する.
+        internalFrame.setData(data);
+        internalFrame.setFile(file);
+
+        addInternalFrame(internalFrame);
+
+        return internalFrame;
+    }
+
+    /**
+     * MDI子ウィンドウを登録する共通処理.<br>
+     * 登録に際して、ファイル名変更リスナを設定したり、画面サイズを設定する.<br>
+     * 
+     * @param internalFrame
+     */
+    protected void addInternalFrame(final DocumentInternalFrame internalFrame) {
+        if (internalFrame == null) {
+            throw new IllegalArgumentException();
+        }
         // ファイル名が変更されたら通知を受け取るようにリスナを設定する.
         internalFrame.addPropertyChangeListener(
                 TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
@@ -209,8 +269,6 @@ public class MainFrame extends JFrame {
         } catch (PropertyVetoException ex) {
             logger.log(Level.FINE, ex.toString());
         }
-
-        return internalFrame;
     }
 
     /**
@@ -333,11 +391,16 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * 新規用にテキストウィンドウを開く.
+     * 新規用に暗号化用のテキストウィンドウを開く.
      */
     protected void onNew() {
+        // パスフレーズの有無を確認する.
+        if (!checkPassphrase()) {
+            return;
+        }
+
         // 新規にテキストドキュメントを開く.
-        createTextInternalFrame(null);
+        createTextInternalFrame(null, null);
     }
 
     /**
@@ -350,13 +413,19 @@ public class MainFrame extends JFrame {
         if (file == null) {
             return;
         }
+
+        // パスフレーズの有無を確認する.
+        if (!checkPassphrase()) {
+            return;
+        }
+
         for (JInternalFrame child : desktop.getAllFrames()) {
             if (!child.isDisplayable() || !child.isVisible()) {
                 // 表示されていないか、破棄されたものは除外する.
                 continue;
             }
-            if (child instanceof TextInternalFrame) {
-                TextInternalFrame c = (TextInternalFrame) child;
+            if (child instanceof DocumentInternalFrame) {
+                DocumentInternalFrame c = (DocumentInternalFrame) child;
                 File docFile = c.getFile();
                 if (docFile != null && docFile.equals(file)) {
                     // すでに同ファイルがオープンされていれば、それをアクティブにする.
@@ -368,13 +437,26 @@ public class MainFrame extends JFrame {
         }
 
         // まだファイルが開かれていなければ開く.
-        createTextInternalFrame(file);
+        Object data = loadEncrypted(file);
+        if (data != null && data instanceof String) {
+            // テキストデータの場合
+            createTextInternalFrame(file, (String)data);
+            
+        } else if (data != null && data instanceof ApplicationData) {
+            // バイナリデータの場合(画像)
+            createPictureInternalFrame(file, (ApplicationData)data);
+        }
     }
 
     /**
      * 任意の非暗号化ファイルを開く.
      */
     protected void onOpenAny() {
+        // パスフレーズの有無を確認する.
+        if (!checkPassphrase()) {
+            return;
+        }
+
         JFileChooser fileChooser = FileChooserEx.createFileChooser(
                 appConfig.getLastUseDir(), false);
         int ret = fileChooser.showOpenDialog(this);
@@ -387,50 +469,95 @@ public class MainFrame extends JFrame {
             // 選択なし
             return;
         }
-        
-        // サポートされている文字コード一覧の取得
-        ArrayList<String> encodingNames = new ArrayList<String>();
-        for (String name : Charset.availableCharsets().keySet()) {
-            encodingNames.add(name);
-        }
-        String defaultEncoding = appConfig.getLastUseImportTextEncoding();
-        if (defaultEncoding == null || defaultEncoding.trim().length() == 0) {
-            defaultEncoding = Charset.defaultCharset().name();
-        }
-        
-        // 文字コードの選択ダイアログ
-        JComboBox encodingCombo = new JComboBox(
-                encodingNames.toArray(new String[encodingNames.size()]));
-        encodingCombo.setSelectedItem(defaultEncoding);
-        
-        ret = JOptionPane.showConfirmDialog(this, encodingCombo, "Choose Charset", JOptionPane.YES_NO_OPTION);
-        if (ret != JOptionPane.YES_OPTION) {
-            return;
-        }
-        String encoding = (String)encodingCombo.getSelectedItem();
-        if (encoding == null) {
-            return;
-        }
-        appConfig.setLastUseImportTextEncoding(encoding);
 
-        // 平文ファイルを読み込む
-        String doc;
-        try {
-            doc = documentController.loadText(file, encoding);
+        // 最後に使用したディレクトリとして記憶する.
+        appConfig.setLastUseDir(file.getParentFile());
 
-        } catch (Exception ex) {
-            ErrorMessageHelper.showErrorDialog(this, ex);
-            return;
+        String lcFileName = file.getName().toLowerCase();
+        if (lcFileName.endsWith(".png") || lcFileName.endsWith(".jpeg")
+                || lcFileName.endsWith(".jpg")) {
+            // 画像タイプの場合はバイナリとして読み込む
+            byte[] buf;
+            try {
+                buf = documentController.loadBinary(file);
+
+            } catch (Exception ex) {
+                ErrorMessageHelper.showErrorDialog(this, ex);
+                return;
+            }
+
+            if (buf == null) {
+                return;
+            }
+
+            // MIMEタイプの算定
+            String typ = "unknown";
+            int pt = lcFileName.lastIndexOf('.');
+            if (pt > 0) {
+                typ = lcFileName.substring(pt + 1);
+                if ("jpg".equals(typ)) {
+                    typ = "jpeg";
+                }
+            }
+            String mime = "image/" + typ;
+
+            // バイナリデータの構築
+            ApplicationData data = new ApplicationData(mime, buf);
+
+            // 新規にバイナリドキュメントを開く.
+            PictureInternalFrame internalFrame = createPictureInternalFrame(null, data);
+
+            // 読み込んだファイルの内容とファイル名を設定する.
+            // (未保存のドキュメントとして扱われる)
+            internalFrame.setTemporaryTitle(file.getName());
+            internalFrame.setModified(true); // 編集中としてマークする.
+
+        } else {
+            // テキストタイプ
+            // サポートされている文字コード一覧の取得
+            ArrayList<String> encodingNames = new ArrayList<String>();
+            for (String name : Charset.availableCharsets().keySet()) {
+                encodingNames.add(name);
+            }
+            String defaultEncoding = appConfig.getLastUseImportTextEncoding();
+            if (defaultEncoding == null || defaultEncoding.trim().length() == 0) {
+                defaultEncoding = Charset.defaultCharset().name();
+            }
+
+            // 文字コードの選択ダイアログ
+            JComboBox encodingCombo = new JComboBox(
+                    encodingNames.toArray(new String[encodingNames.size()]));
+            encodingCombo.setSelectedItem(defaultEncoding);
+
+            ret = JOptionPane.showConfirmDialog(this, encodingCombo,
+                    "Choose Charset", JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                return;
+            }
+            String encoding = (String) encodingCombo.getSelectedItem();
+            if (encoding == null) {
+                return;
+            }
+            appConfig.setLastUseImportTextEncoding(encoding);
+
+            // 平文ファイルを読み込む
+            String doc;
+            try {
+                doc = documentController.loadText(file, encoding);
+
+            } catch (Exception ex) {
+                ErrorMessageHelper.showErrorDialog(this, ex);
+                return;
+            }
+
+            // 新規にテキストドキュメントを開く.
+            TextInternalFrame internalFrame = createTextInternalFrame(null, doc);
+
+            // 読み込んだファイルの内容とファイル名を設定する.
+            // (未保存のドキュメントとして扱われる)
+            internalFrame.setTemporaryTitle(file.getName());
+            internalFrame.setModified(true); // 編集中としてマークする.
         }
-
-        // 新規にテキストドキュメントを開く.
-        TextInternalFrame internalFrame = createTextInternalFrame(null);
-
-        // 読み込んだファイルの内容とファイル名を設定する.
-        // (未保存のドキュメントとして扱われる)
-        internalFrame.setTemporaryTitle(file.getName());
-        internalFrame.setText(doc);
-        internalFrame.setModified(true); // 編集中としてマークする.
     }
 
     /**
@@ -520,8 +647,8 @@ public class MainFrame extends JFrame {
                 // 表示できないか、表示されていないものは除外する.
                 continue;
             }
-            if (child instanceof TextInternalFrame) {
-                TextInternalFrame c = (TextInternalFrame) child;
+            if (child instanceof DocumentInternalFrame) {
+                DocumentInternalFrame c = (DocumentInternalFrame) child;
                 if (c.isModified()) {
                     // 未保存のドキュメントがあるので確認が必要.
                     needConfirm = true;

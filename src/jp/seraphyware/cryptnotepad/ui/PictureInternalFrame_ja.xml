@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment />
+  <entry key="save.button.title">保存*</entry>
+  <entry key="save.button.tooltip">シフトキーと共に押下した場合は、別名保存する.</entry>
+  <entry key="export.button.title">平文で保存</entry>
+  <entry key="export.button.tooltip">暗号化せずに保存します.</entry>
+</properties>

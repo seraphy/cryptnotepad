@@ -1,10 +1,21 @@
 package jp.seraphyware.cryptnotepad.ui;
 
+import java.awt.Event;
+import java.awt.event.ActionEvent;
+import java.beans.PropertyVetoException;
 import java.io.File;
 import java.util.ResourceBundle;
 
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JInternalFrame;
+import javax.swing.JOptionPane;
+import javax.swing.KeyStroke;
+import javax.swing.event.InternalFrameAdapter;
+import javax.swing.event.InternalFrameEvent;
 
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
@@ -69,11 +80,73 @@ public class DocumentInternalFrame extends JInternalFrame {
             throw new IllegalArgumentException();
         }
 
+        // 閉じるイベントのハンドリング
+        setDefaultCloseOperation(JInternalFrame.DO_NOTHING_ON_CLOSE);
+        addInternalFrameListener(new InternalFrameAdapter() {
+            @Override
+            public void internalFrameClosing(InternalFrameEvent e) {
+                onClosing();
+            }
+        });
+
+        // メンバ初期化
         this.documentController = documentController;
         this.appConfig = ApplicationSettings.getInstance();
         this.resource = ResourceBundle.getBundle(
                 DocumentInternalFrame.class.getName(),
                 XMLResourceBundle.CONTROL);
+
+        // 最大化・サイズ変更・最小化、閉じるボタンを許可する.
+        setMaximizable(true);
+        setResizable(true);
+        setIconifiable(true);
+        setClosable(true);
+
+        /**
+         * 閉じるショートカット.
+         */
+        AbstractAction actClose = new AbstractAction("close") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onClosing();
+            }
+        };
+
+        ActionMap am = this.getActionMap();
+        InputMap im = this.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+
+        im.put(KeyStroke.getKeyStroke('W', Event.CTRL_MASK), actClose);
+        am.put(actClose, actClose);
+    }
+
+    /**
+     * ウィンドウを閉じる.
+     */
+    protected void onClosing() {
+        // 変更があれば破棄するか確認する.
+        if (isModified()) {
+            String message = resource.getString("confirm.close.unsavedchanges");
+            String title = resource.getString("confirm.title");
+            int ret = JOptionPane.showConfirmDialog(this, message, title,
+                    JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        // 閉じる.
+        try {
+            fireVetoableChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
+            isClosed = true;
+            setVisible(false);
+            firePropertyChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
+            dispose();
+
+        } catch (PropertyVetoException pve) {
+            // 無視する.
+        }
     }
 
     /**

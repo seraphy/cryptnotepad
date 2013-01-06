@@ -1,7 +1,6 @@
 package jp.seraphyware.cryptnotepad.model;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,14 +8,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.imageio.ImageIO;
 
 import jp.seraphyware.cryptnotepad.crypt.SymCipher;
 
@@ -67,22 +65,55 @@ public class DocumentController {
     }
 
     /**
+     * バイナリデータを読み取ります.<br>
+     * ファイルが存在しない場合はnullを返します.<br>
+     * 
+     * @param file
+     *            ファイル
+     * @return バイナリデータ、もしくはnull
+     * @throws IOException
+     *             失敗
+     */
+    public byte[] loadBinary(File file) throws IOException {
+        if (file == null || !file.exists()) {
+            return null;
+        }
+
+        int len = (int) file.length();
+        byte[] buf = new byte[len];
+
+        RandomAccessFile fh = new RandomAccessFile(file, "r");
+        try {
+            fh.seek(0);
+            fh.readFully(buf);
+
+        } finally {
+            fh.close();
+        }
+
+        return buf;
+    }
+
+    /**
      * テキストファイルをロードする.<br>
      * 
-     * @param file ファイル
-     * @param encoding 文字コード、nullの場合は設定に従う.
+     * @param file
+     *            ファイル
+     * @param encoding
+     *            文字コード、nullの場合は設定に従う.
      * @return 読み込まれたテキスト
-     * @throws IOException 失敗
+     * @throws IOException
+     *             失敗
      */
     public String loadText(File file, String encoding) throws IOException {
         if (file == null || !file.exists()) {
             return "";
         }
-        
+
         if (encoding == null || encoding.trim().length() == 0) {
             encoding = settingsModel.getEncoding();
         }
-        
+
         StringBuilder buf = new StringBuilder();
         char[] cbuf = new char[1024];
         InputStreamReader reader = new InputStreamReader(new FileInputStream(
@@ -151,20 +182,10 @@ public class DocumentController {
             return new String(data, offset, length, encoding);
         }
 
-        // 画像データの場合
-        if (contentType.startsWith("image/")) {
-            ImageIO.setUseCache(false);
-            ByteArrayInputStream is = new ByteArrayInputStream(data, offset,
-                    length);
-            try {
-                return ImageIO.read(is);
-            } finally {
-                is.close();
-            }
-        }
-
-        // それ以外の場合
-        return new ApplicationData(contentType, data);
+        // 画像データの場合か、それ以外の場合
+        byte[] buf = new byte[length];
+        System.arraycopy(data, offset, buf, 0, length);
+        return new ApplicationData(contentType, buf);
     }
 
     /**
@@ -379,5 +400,31 @@ public class DocumentController {
         }
 
         symCipher.encrypt(buf, file);
+    }
+
+    /**
+     * 平文でバイナリデータをファイルに保存します.
+     * 
+     * @param file
+     *            ファイル
+     * @param data
+     *            バイナリデータ、nullの場合は空とみなす.
+     * @throws IOException
+     */
+    public void savePlainBinary(File file, byte[] data) throws IOException {
+        if (file == null) {
+            throw new IllegalArgumentException();
+        }
+        if (data == null) {
+            data = new byte[0];
+        }
+
+        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+        try {
+            os.write(data);
+
+        } finally {
+            os.close();
+        }
     }
 }

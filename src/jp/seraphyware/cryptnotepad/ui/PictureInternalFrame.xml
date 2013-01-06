@@ -2,10 +2,8 @@
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
   <comment />
-  <entry key="changeFont.button.title">Font</entry>
-  <entry key="changeFont.button.tooltip">Choose the font</entry>
   <entry key="save.button.title">Save*</entry>
   <entry key="save.button.tooltip">If SHIFT-KEY is pressed, Save as any name.</entry>
   <entry key="export.button.title">Export</entry>
-  <entry key="export.button.tooltip">Export for ClearText</entry>
+  <entry key="export.button.tooltip">Export for No-ENCRYPTED PLAIN DATA.</entry>
 </properties>

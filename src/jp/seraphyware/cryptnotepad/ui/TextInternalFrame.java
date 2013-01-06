@@ -9,7 +9,6 @@ import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
-import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -23,7 +22,6 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFormattedTextField;
-import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -32,8 +30,6 @@ import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.event.InternalFrameAdapter;
-import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.UndoManager;
@@ -70,27 +66,14 @@ public class TextInternalFrame extends DocumentInternalFrame {
      * コンストラクタ
      * 
      * @param documentController
-     * @param file
      */
     public TextInternalFrame(DocumentController documentController) {
         super(documentController);
-        setDefaultCloseOperation(JInternalFrame.DO_NOTHING_ON_CLOSE);
-        addInternalFrameListener(new InternalFrameAdapter() {
-            @Override
-            public void internalFrameClosing(InternalFrameEvent e) {
-                onClosing();
-            }
-        });
 
         this.resource = ResourceBundle.getBundle(getClass().getName(),
                 XMLResourceBundle.CONTROL);
 
         updateTitle();
-
-        setMaximizable(true);
-        setResizable(true);
-        setIconifiable(true);
-        setClosable(true);
 
         this.area = new JTextArea();
         this.area.getDocument().addDocumentListener(new DocumentListener() {
@@ -227,33 +210,6 @@ public class TextInternalFrame extends DocumentInternalFrame {
     }
 
     /**
-     * ウィンドウを閉じる.
-     */
-    protected void onClosing() {
-        // 変更があれば破棄するか確認する.
-        if (isModified()) {
-            String message = resource.getString("confirm.close.unsavedchanges");
-            String title = resource.getString("confirm.title");
-            int ret = JOptionPane.showConfirmDialog(this, message, title,
-                    JOptionPane.YES_NO_OPTION);
-            if (ret != JOptionPane.YES_OPTION) {
-                return;
-            }
-        }
-
-        // 閉じる.
-        try {
-            fireVetoableChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
-            isClosed = true;
-            setVisible(false);
-            firePropertyChange(IS_CLOSED_PROPERTY, Boolean.FALSE, Boolean.TRUE);
-            dispose();
-        } catch (PropertyVetoException pve) {
-            // 無視する.
-        }
-    }
-
-    /**
      * 編集するテキストを設定する.<br>
      * 変更フラグはリセットされる.
      * 
@@ -337,7 +293,7 @@ public class TextInternalFrame extends DocumentInternalFrame {
             }
 
         } catch (Exception ex) {
-            ErrorMessageHelper.showErrorDialog(TextInternalFrame.this, ex);
+            ErrorMessageHelper.showErrorDialog(this, ex);
         }
     }
 

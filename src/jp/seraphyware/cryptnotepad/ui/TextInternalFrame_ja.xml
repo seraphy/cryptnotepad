@@ -8,7 +8,4 @@
   <entry key="save.button.tooltip">シフトキーと共に押下した場合、別名保存します.</entry>
   <entry key="export.button.title">平文で保存</entry>
   <entry key="export.button.tooltip">暗号化せずに任意のフォルダにファイルを保存します.</entry>
-
-  <entry key="confirm.title">確認</entry>
-  <entry key="confirm.close.unsavedchanges">未保存の変更があります。変更を破棄しますか?</entry>
 </properties>
