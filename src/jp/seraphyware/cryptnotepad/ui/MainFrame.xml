@@ -5,9 +5,13 @@
   <entry key="mainframe.title">MultiNotepad</entry>
   <entry key="files.border.title">Files</entry>
   <entry key="settings.button.title">Settings</entry>
+
   <entry key="new.button.title">New</entry>
+  <entry key="new.button.tooltip">Create an empty text document.</entry>
   <entry key="delete.button.title">Delete</entry>
-  <entry key="open.button.title">Open</entry>
+  <entry key="delete.button.tooltip">Filling the random data, and delete.</entry>
+  <entry key="open.button.title">Open*</entry>
+  <entry key="open.button.tooltip">if SHIFT-KEY pressed, Open the Any file.</entry>
 
   <entry key="error.password.required">passphrase required. do you want to set up the passphrase?</entry>
 

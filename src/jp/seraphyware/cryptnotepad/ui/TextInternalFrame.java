@@ -209,11 +209,14 @@ public class TextInternalFrame extends JInternalFrame {
         im.put(KeyStroke.getKeyStroke('S', Event.CTRL_MASK), actSave);
         am.put(actSave, actSave);
 
+        // テキストエリアのスクロール、スクロールバーは縦横ともに常に表示しておく.
         JScrollPane scr = new JScrollPane(area);
+        scr.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scr.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
         Box btnPanel = Box.createHorizontalBox();
 
-        btnPanel.add(new JButton(new AbstractAction(resource
+        JButton btnFont = new JButton(new AbstractAction(resource
                 .getString("changeFont.button.title")) {
             private static final long serialVersionUID = 1L;
 
@@ -221,11 +224,13 @@ public class TextInternalFrame extends JInternalFrame {
             public void actionPerformed(ActionEvent e) {
                 onChangeFont();
             }
-        }));
+        });
+        btnFont.setToolTipText(resource.getString("changeFont.button.tooltip"));
+        btnPanel.add(btnFont);
 
         btnPanel.add(Box.createHorizontalGlue());
 
-        btnPanel.add(new JButton(new AbstractAction(resource
+        JButton btnExport = new JButton(new AbstractAction(resource
                 .getString("export.button.title")) {
             private static final long serialVersionUID = 1L;
 
@@ -233,9 +238,13 @@ public class TextInternalFrame extends JInternalFrame {
             public void actionPerformed(ActionEvent e) {
                 onExport();
             }
-        }));
+        });
+        btnExport.setToolTipText(resource.getString("export.button.tooltip"));
+        btnPanel.add(btnExport);
 
-        btnPanel.add(new JButton(actSave));
+        JButton btnSave = new JButton(actSave);
+        btnSave.setToolTipText(resource.getString("save.button.tooltip"));
+        btnPanel.add(btnSave);
 
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());

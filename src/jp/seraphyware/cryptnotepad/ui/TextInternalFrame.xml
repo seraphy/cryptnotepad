@@ -5,7 +5,9 @@
   <entry key="notitled.title">No-Titled</entry>
   
   <entry key="changeFont.button.title">Font</entry>
-  <entry key="save.button.title">Save</entry>
+  <entry key="changeFont.button.tooltip">Choose the font</entry>
+  <entry key="save.button.title">Save*</entry>
+  <entry key="save.button.title">If SHIFT-KEY is pressed, Save as any name.</entry>
   <entry key="export.button.title">Export</entry>
 
   <entry key="confirm.title">CONFIRM</entry>

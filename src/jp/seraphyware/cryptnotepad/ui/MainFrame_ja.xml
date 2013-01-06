@@ -5,9 +5,13 @@
   <entry key="mainframe.title">マルチノート</entry>
   <entry key="files.border.title">ファイル一覧</entry>
   <entry key="settings.button.title">設定</entry>
+
   <entry key="new.button.title">新規</entry>
+  <entry key="new.button.tooltip">新規にテキストドキュメントを開きます.</entry>
   <entry key="delete.button.title">削除</entry>
-  <entry key="open.button.title">開く</entry>
+  <entry key="delete.button.tooltip">ランダム値で埋めてからファイルエントリを削除します.</entry>
+  <entry key="open.button.title">開く*</entry>
+  <entry key="open.button.tooltip">シフトキーと共に押下した場合、任意のファイルを開くます.</entry>
 
   <entry key="error.password.required">パスフレーズが設定されていません.設定しますか？</entry>
 

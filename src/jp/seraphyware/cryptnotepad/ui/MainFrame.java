@@ -252,6 +252,8 @@ public class MainFrame extends JFrame {
                 onNew();
             }
         });
+        btnNew.setToolTipText(resource.getString("new.button.tooltip"));
+        
         JButton btnDelete = new JButton(new AbstractAction(
                 resource.getString("delete.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -268,6 +270,8 @@ public class MainFrame extends JFrame {
                 }
             }
         });
+        btnDelete.setToolTipText(resource.getString("delete.button.tooltip"));
+
         JButton btnOpen = new JButton(new AbstractAction(
                 resource.getString("open.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -278,6 +282,8 @@ public class MainFrame extends JFrame {
                 onOpenFile(fileTreePanel.getFocusedFile());
             }
         });
+        btnOpen.setToolTipText(resource.getString("open.button.tooltip"));
+
         btnPanel.add(btnNew);
         btnPanel.add(btnDelete);
         btnPanel.add(btnOpen);
