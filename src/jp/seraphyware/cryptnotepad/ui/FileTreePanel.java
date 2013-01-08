@@ -167,13 +167,17 @@ public class FileTreePanel extends JPanel {
             File dir = (File) dirNode.getUserObject();
 
             logger.log(Level.FINE, "dir=" + dir);
-            File[] files;
+            File[] files = null;
             try {
                 files = dir.listFiles();
 
             } catch (Exception ex) {
                 // ファイル一覧の取得に失敗した場合は空とする.
                 logger.log(Level.INFO, "fileTreeTraversalError." + ex, ex);
+            }
+            
+            if (files == null) {
+                // ファイル一覧が取得できなかった場合
                 files = new File[0];
             }
 

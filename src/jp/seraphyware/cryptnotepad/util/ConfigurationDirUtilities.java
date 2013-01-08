@@ -2,6 +2,7 @@ package jp.seraphyware.cryptnotepad.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
@@ -122,8 +123,12 @@ public final class ConfigurationDirUtilities {
                     throw new RuntimeException("実行コードが配置されている場所を判定できません");
                 }
                 // クラスパスフォルダ、またはJARファイルの、その親
-                applicationBaseDir = new File(codeBaseUrl.getPath())
-                        .getParentFile();
+                try {
+                    applicationBaseDir = new File(codeBaseUrl.toURI())
+                            .getParentFile();
+                } catch (URISyntaxException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         }
         return applicationBaseDir;

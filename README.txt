@@ -22,7 +22,7 @@ IV + AES/CBC/PKCS5Padding
 復号化されたデータは、先頭にヘッダがあり、ヘッダ終了を示す行頭改行につづいてボディとなる。
 ヘッダは、
 Content-Type: text/plain;charset=UTF-8\r\n
-Content-Lemgth: nnn\r\n
+Content-Length: nnn\r\n
 \r\n
 のような形式となっている。
 
