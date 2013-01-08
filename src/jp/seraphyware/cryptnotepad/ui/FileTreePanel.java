@@ -28,7 +28,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
 import jp.seraphyware.cryptnotepad.Main;
-import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
+import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 
 /**
  * ファイルツリーのパネル
@@ -56,6 +56,11 @@ public class FileTreePanel extends JPanel {
             .getName());
 
     /**
+     * アプリケーション設定
+     */
+    private ApplicationSettings appConfig;
+
+    /**
      * ツリーモデル
      */
     private DefaultTreeModel model;
@@ -76,12 +81,13 @@ public class FileTreePanel extends JPanel {
      */
     private File selectedFile;
 
-
     /**
      * コンストラクタ
      */
     public FileTreePanel() {
         super(new BorderLayout());
+
+        appConfig = ApplicationSettings.getInstance();
 
         DefaultMutableTreeNode root = new DefaultMutableTreeNode();
         model = new DefaultTreeModel(root);
@@ -140,15 +146,17 @@ public class FileTreePanel extends JPanel {
         InputMap im = tree.getInputMap(JComponent.WHEN_FOCUSED);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), actRefresh);
         am.put(actRefresh, actRefresh);
-
-        refresh();
     }
 
     /**
      * ツリーのファイル一覧をリフレッシュする.
      */
     public void refresh() {
-        File rootDir = ConfigurationDirUtilities.getApplicationBaseDir();
+        File rootDir = appConfig.getContentsDir();
+        if (rootDir == null) {
+            throw new IllegalStateException(
+                    "ApplicationSettings#contentsDirが未設定です.");
+        }
         DefaultMutableTreeNode root = new DefaultMutableTreeNode(rootDir);
 
         LinkedList<DefaultMutableTreeNode> queue = new LinkedList<DefaultMutableTreeNode>();
@@ -162,7 +170,7 @@ public class FileTreePanel extends JPanel {
             File[] files;
             try {
                 files = dir.listFiles();
-                
+
             } catch (Exception ex) {
                 // ファイル一覧の取得に失敗した場合は空とする.
                 logger.log(Level.INFO, "fileTreeTraversalError." + ex, ex);
@@ -170,7 +178,7 @@ public class FileTreePanel extends JPanel {
             }
 
             Arrays.sort(files);
-            
+
             for (File file : files) {
                 logger.log(Level.FINER, "file=" + file);
 
@@ -189,6 +197,7 @@ public class FileTreePanel extends JPanel {
     /**
      * ツリー上で現在フォーカスされているファイルまたはディレクトリを取得する.<br>
      * 該当がなければnullを返す.<br>
+     * 
      * @return 選択されているファイル、ディレクトリ、もしくはnull
      */
     public File getFocusedFile() {

@@ -125,7 +125,17 @@ public class MainFrame extends JFrame {
 
         // ファイル一覧パネル
         fileTreePanel = new FileTreePanel();
+        fileTreePanel.refresh();
         JPanel leftPanel = createFileTreePanel(fileTreePanel);
+
+        // 文書ディレクトリが変更された場合はリフレッシュする.
+        appConfig.addPropertyChangeListener("contentsDir",
+                new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        fileTreePanel.refresh();
+                    }
+                });
 
         // レイアウト
         Container contentPane = getContentPane();

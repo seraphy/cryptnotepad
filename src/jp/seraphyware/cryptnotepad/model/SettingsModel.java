@@ -89,7 +89,7 @@ public class SettingsModel implements Serializable, SymCryptKeySource {
 
     public void setEncoding(String encoding) {
         if (encoding == null || encoding.trim().length() == 0) {
-            throw new IllegalArgumentException();
+            encoding = DEFAULT_ENCODING;
         }
         String oldValue = this.encoding;
         this.encoding = encoding.trim();

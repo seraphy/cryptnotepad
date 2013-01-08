@@ -7,5 +7,8 @@
   <entry key="button.cancel.text">Cancel</entry>
   <entry key="label.encoding.text">Encoding</entry>
   <entry key="label.passphrase.text">Passphrase</entry>
+  <entry key="button.browse.text">Browse</entry>
   <entry key="label.keyfile.text">Keyfile</entry>
+  <entry key="label.contentsDir.text">Contents Dir</entry>
+  <entry key="label.workingDir.text">Working Dir</entry>
 </properties>

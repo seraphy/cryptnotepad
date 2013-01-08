@@ -30,7 +30,9 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 
+import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.SettingsModel;
+import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
@@ -98,9 +100,20 @@ public class SettingsDialog extends JDialog {
     private JTextField txtKeyFile;
 
     /**
+     * 文書ディレクトリ
+     */
+    private JTextField txtContentsDir;
+
+    /**
+     * 作業ディレクトリ
+     */
+    private JTextField txtWorkingDir;
+
+    /**
      * レイアウトなど初期化
      */
     private void init() {
+        // ウィンドウの閉じるボタン処理
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
@@ -109,24 +122,33 @@ public class SettingsDialog extends JDialog {
             }
         });
 
+        // メンバの構築
+
         txtEncoding = new JTextField();
         txtPassphrase = new JPasswordField();
         txtKeyFile = new JTextField();
 
+        txtContentsDir = new JTextField();
+        txtWorkingDir = new JTextField();
+
         Dimension passphraseSize = txtPassphrase.getPreferredSize();
-        passphraseSize.width = 250;
+        passphraseSize.width = 300;
         txtPassphrase.setPreferredSize(passphraseSize);
 
         setTitle(resource.getString("settingDialog.title"));
 
-        Container contentPane = getContentPane();
-        contentPane.setLayout(new BorderLayout());
+        // コンポーネントの登録
 
-        JPanel pnl = new JPanel();
-        GridBagLayout gbl = new GridBagLayout();
         GridBagConstraints gbc = new GridBagConstraints();
-        pnl.setLayout(gbl);
-        pnl.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
+
+        // ファイル設定群
+
+        JPanel pnlFileSettings = new JPanel();
+        GridBagLayout gbl = new GridBagLayout();
+        pnlFileSettings.setLayout(gbl);
+        pnlFileSettings.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(3, 3, 3, 3),
+                BorderFactory.createTitledBorder("File Settings")));
 
         gbc.gridheight = 1;
         gbc.gridwidth = 1;
@@ -138,33 +160,37 @@ public class SettingsDialog extends JDialog {
         gbc.gridy = 0;
         gbc.weightx = 0;
         gbc.anchor = GridBagConstraints.EAST;
-        pnl.add(new JLabel(resource.getString("label.encoding.text")), gbc);
+        pnlFileSettings.add(
+                new JLabel(resource.getString("label.encoding.text")), gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 0;
         gbc.weightx = 1.;
         gbc.anchor = GridBagConstraints.WEST;
-        pnl.add(txtEncoding, gbc);
+        pnlFileSettings.add(txtEncoding, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.weightx = 0;
         gbc.anchor = GridBagConstraints.EAST;
-        pnl.add(new JLabel(resource.getString("label.passphrase.text")), gbc);
+        pnlFileSettings.add(
+                new JLabel(resource.getString("label.passphrase.text")), gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.weightx = 1.;
         gbc.anchor = GridBagConstraints.WEST;
-        pnl.add(txtPassphrase, gbc);
+        pnlFileSettings.add(txtPassphrase, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
         gbc.weightx = 0;
         gbc.anchor = GridBagConstraints.EAST;
-        pnl.add(new JLabel(resource.getString("label.keyfile.text")), gbc);
+        pnlFileSettings.add(
+                new JLabel(resource.getString("label.keyfile.text")), gbc);
 
-        AbstractAction actBrowseFile = new AbstractAction("Browse") {
+        AbstractAction actBrowseFile = new AbstractAction(
+                resource.getString("button.browse.text")) {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -172,15 +198,78 @@ public class SettingsDialog extends JDialog {
                 onBrowseFile();
             }
         };
-        JPanel keyFilePanel = new JPanel(new BorderLayout());
-        keyFilePanel.add(txtKeyFile, BorderLayout.CENTER);
-        keyFilePanel.add(new JButton(actBrowseFile), BorderLayout.EAST);
 
         gbc.gridx = 1;
         gbc.gridy = 2;
         gbc.weightx = 1.;
         gbc.anchor = GridBagConstraints.WEST;
-        pnl.add(keyFilePanel, gbc);
+        pnlFileSettings.add(
+                createPanel(txtKeyFile, new JButton(actBrowseFile)), gbc);
+
+        // ディレクトリ設定群
+
+        JPanel pnlDirSettings = new JPanel();
+        pnlDirSettings.setLayout(new GridBagLayout());
+        pnlDirSettings.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createEmptyBorder(3, 3, 3, 3),
+                BorderFactory.createTitledBorder("Directory Settings")));
+
+        gbc.gridheight = 1;
+        gbc.gridwidth = 1;
+        gbc.ipadx = 2;
+        gbc.ipady = 2;
+        gbc.fill = GridBagConstraints.BOTH;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        pnlDirSettings.add(
+                new JLabel(resource.getString("label.contentsDir.text")), gbc);
+
+        AbstractAction actBrowseContentsDir = new AbstractAction(
+                resource.getString("button.browse.text")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onBrowseContentsDir();
+            }
+        };
+        AbstractAction actBrowseWorkingDir = new AbstractAction(
+                resource.getString("button.browse.text")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onBrowseWorkingDir();
+            }
+        };
+
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.weightx = 1.;
+        gbc.anchor = GridBagConstraints.WEST;
+        pnlDirSettings.add(
+                createPanel(txtContentsDir, new JButton(actBrowseContentsDir)),
+                gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        pnlDirSettings.add(
+                new JLabel(resource.getString("label.workingDir.text")), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.weightx = 1.;
+        gbc.anchor = GridBagConstraints.WEST;
+        pnlDirSettings.add(
+                createPanel(txtWorkingDir, new JButton(actBrowseWorkingDir)),
+                gbc);
+
+        // ボタンパネル
 
         AbstractAction actOK = new AbstractAction(
                 resource.getString("button.ok.text")) {
@@ -218,12 +307,38 @@ public class SettingsDialog extends JDialog {
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actCancel);
         am.put(actCancel, actCancel);
 
-        contentPane.add(pnl, BorderLayout.CENTER);
+        // パネルの配置
+
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.add(pnlFileSettings, BorderLayout.NORTH);
+        centerPanel.add(pnlDirSettings, BorderLayout.SOUTH);
+
+        Container contentPane = getContentPane();
+        contentPane.setLayout(new BorderLayout());
+        contentPane.add(centerPanel, BorderLayout.CENTER);
         contentPane.add(btnPanel, BorderLayout.SOUTH);
 
+        // データの設定
         update(false);
 
+        // レイアウト完了
         pack();
+    }
+
+    /**
+     * パネルを作成する.
+     * 
+     * @param center
+     *            センターに配置するコンポーネント
+     * @param east
+     *            東に配置するコンポーネント
+     * @return パネル
+     */
+    private JPanel createPanel(JComponent center, JComponent east) {
+        JPanel pnl = new JPanel(new BorderLayout());
+        pnl.add(center, BorderLayout.CENTER);
+        pnl.add(east, BorderLayout.EAST);
+        return pnl;
     }
 
     /**
@@ -237,6 +352,9 @@ public class SettingsDialog extends JDialog {
         if (model == null) {
             return;
         }
+
+        ApplicationSettings appConfig = ApplicationSettings.getInstance();
+
         if (save) {
             model.setEncoding(txtEncoding.getText());
             model.setKeyFile(txtKeyFile.getText());
@@ -247,9 +365,28 @@ public class SettingsDialog extends JDialog {
                 model.setPassphrase(passphrase);
             }
 
+            String strContentsDir = txtContentsDir.getText();
+            if (strContentsDir != null && strContentsDir.trim().length() > 0) {
+                appConfig.setContentsDir(new File(strContentsDir.trim()));
+            } else {
+                appConfig.setContentsDir(ConfigurationDirUtilities
+                        .getApplicationBaseDir());
+            }
+            String strWorkingDir = txtWorkingDir.getText();
+            if (strWorkingDir != null && strWorkingDir.trim().length() > 0) {
+                appConfig.setWorkingDir(new File(strWorkingDir.trim()));
+            } else {
+                appConfig.setWorkingDir(new File(System
+                        .getProperty("java.io.tmpdir")));
+            }
+
         } else {
             txtEncoding.setText(model.getEncoding());
             txtKeyFile.setText(model.getKeyFile());
+
+            txtContentsDir
+                    .setText(appConfig.getContentsDir().getAbsolutePath());
+            txtWorkingDir.setText(appConfig.getWorkingDir().getAbsolutePath());
         }
     }
 
@@ -282,6 +419,46 @@ public class SettingsDialog extends JDialog {
         if (ret == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             txtKeyFile.setText(selectedFile.getAbsolutePath());
+        }
+    }
+
+    /**
+     * 文書ディレクトリを選択する.
+     */
+    protected void onBrowseContentsDir() {
+        JFileChooser dirChooser = new JFileChooser();
+        dirChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        String strContentsDir = txtContentsDir.getText();
+        if (strContentsDir != null && strContentsDir.trim().length() > 0) {
+            dirChooser.setSelectedFile(new File(strContentsDir.trim()));
+        }
+        int ret = dirChooser.showOpenDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File contentsDir = dirChooser.getSelectedFile();
+        if (contentsDir != null && contentsDir.isDirectory()) {
+            txtContentsDir.setText(contentsDir.getAbsolutePath());
+        }
+    }
+
+    /**
+     * 作業ディレクトリを選択する.
+     */
+    protected void onBrowseWorkingDir() {
+        JFileChooser dirChooser = new JFileChooser();
+        dirChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        String strWorkingDir = txtWorkingDir.getText();
+        if (strWorkingDir != null && strWorkingDir.trim().length() > 0) {
+            dirChooser.setSelectedFile(new File(strWorkingDir.trim()));
+        }
+        int ret = dirChooser.showOpenDialog(this);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File workingDir = dirChooser.getSelectedFile();
+        if (workingDir != null && workingDir.isDirectory()) {
+            txtWorkingDir.setText(workingDir.getAbsolutePath());
         }
     }
 

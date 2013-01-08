@@ -52,6 +52,19 @@ public final class ApplicationSettings implements Serializable {
     private String keyFile;
 
     /**
+     * 文書ディレクトリ.<br>
+     * この項目は設定ファイルに保存しません.<br>
+     */
+    private File contentsDir;
+
+    /**
+     * 作業ディレクトリ.<br>
+     * この項目はシステムデフォルトと同じ場合はnullとして保存し、
+     * 次回起動時にシステムデフォルトを再設定します.<br>
+     */
+    private File workingDir;
+
+    /**
      * 最後に使用したディレクトリ
      */
     private File lastUseDir;
@@ -141,6 +154,26 @@ public final class ApplicationSettings implements Serializable {
         String oldValue = this.keyFile;
         this.keyFile = keyFile;
         propChange.firePropertyChange("keyFile", oldValue, keyFile);
+    }
+
+    public File getContentsDir() {
+        return contentsDir;
+    }
+
+    public void setContentsDir(File contentsDir) {
+        File oldValue = this.contentsDir;
+        this.contentsDir = contentsDir;
+        propChange.firePropertyChange("contentsDir", oldValue, contentsDir);
+    }
+
+    public File getWorkingDir() {
+        return workingDir;
+    }
+
+    public void setWorkingDir(File workingDir) {
+        File oldValue = this.workingDir;
+        this.workingDir = workingDir;
+        propChange.firePropertyChange("workingDir", oldValue, workingDir);
     }
 
     public File getLastUseDir() {
@@ -243,17 +276,26 @@ public final class ApplicationSettings implements Serializable {
      * ファイルに保存する.
      * 
      * @param file
+     *            書き込み先ファイル
      * @throws IOException
+     *             失敗した場合
+     * @return 書き込み完了はtrue、書き込み不可の場合はfalse
      */
-    public void save(File file) throws IOException {
+    public boolean save(File file) throws IOException {
         if (file == null) {
             throw new IllegalArgumentException();
         }
 
         Properties props = new Properties();
 
-        // 現在のファイルの読み込み
         if (file.exists()) {
+
+            if (!file.canWrite()) {
+                // 書き込み不可であれば何もしない
+                return false;
+            }
+
+            // 現在のファイルの読み込み
             props.loadFromXML(new BufferedInputStream(new FileInputStream(file)));
         }
 
@@ -271,6 +313,9 @@ public final class ApplicationSettings implements Serializable {
         props.setProperty("encoding", toSafeString(encoding));
         props.setProperty("keyFile", toSafeString(keyFile));
 
+        props.setProperty("workingDir",
+                (workingDir == null) ? "" : workingDir.getAbsolutePath());
+
         props.setProperty("extensionsForText", toSafeString(extensionsForText));
         props.setProperty("extensionsForPicture",
                 toSafeString(extensionsForPicture));
@@ -283,9 +328,12 @@ public final class ApplicationSettings implements Serializable {
         OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
         try {
             props.storeToXML(os, "");
+
         } finally {
             os.close();
         }
+
+        return true;
     }
 
     /**
@@ -318,6 +366,8 @@ public final class ApplicationSettings implements Serializable {
 
         encoding = props.getProperty("encoding");
         keyFile = props.getProperty("keyFile");
+
+        workingDir = parseFile(props.getProperty("workingDir"), workingDir);
 
         extensionsForText = chooseString(
                 props.getProperty("extensionsForText"), extensionsForText);

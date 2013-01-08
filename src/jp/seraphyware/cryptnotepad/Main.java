@@ -222,7 +222,7 @@ public class Main implements Runnable {
         // ドキュメントコントローラを破棄する.
         // (パスフレーズなどをメモリから除去する.)
         documentController.dispose();
-        
+
         logger.log(Level.INFO, "normal shutdown.");
     }
 
@@ -234,6 +234,12 @@ public class Main implements Runnable {
             // アプリケーション設定ファイルの位置を求める
             File userDir = ConfigurationDirUtilities.getUserDataDir();
             appConfigFile = new File(userDir, "appconfig.xml");
+
+            // 環境による初期値を設定する.
+            appConfig.setWorkingDir(new File(System
+                    .getProperty("java.io.tmpdir")));
+            appConfig.setContentsDir(ConfigurationDirUtilities
+                    .getApplicationBaseDir());
 
             // 設定ファイルをロードする.
             appConfig.load(appConfigFile);
@@ -263,12 +269,22 @@ public class Main implements Runnable {
      */
     public void saveAppConfig() {
         try {
-            // 変更フラグがあれば、アプリケーション設定をファイルに保存する.
+            // アプリケーション設定が変更されている場合、
             if (appConfigModified) {
-                appConfig.save(appConfigFile);
+                // 作業フォルダはデフォルトと変更なければ空にして保存する.
+                File workingDir = appConfig.getWorkingDir();
+                if (workingDir.equals(new File(System.getProperty("java.io.tmpdir")))) {
+                    appConfig.setWorkingDir(null);
+                }
+                
+                // 設定ファイルを保存する.
+                if (appConfig.save(appConfigFile)) {
+                    logger.log(Level.INFO, "config file was saved.");
+                }
             }
 
         } catch (Exception ex) {
+            // 書き込みに失敗してもログに記録するだけ.
             ex.printStackTrace();
             logger.log(Level.WARNING, "config file save failed.", ex);
         }

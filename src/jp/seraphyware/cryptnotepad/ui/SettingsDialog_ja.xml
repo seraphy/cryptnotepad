@@ -5,7 +5,10 @@
   <entry key="settingDialog.title">設定</entry>
   <entry key="button.ok.text">OK</entry>
   <entry key="button.cancel.text">キャンセル</entry>
-  <entry key="label.encoding.text">Encoding</entry>
-  <entry key="label.passphrase.text">Passphrase</entry>
-  <entry key="label.keyfile.text">Keyfile</entry>
+  <entry key="label.encoding.text">文字コード</entry>
+  <entry key="label.passphrase.text">パスフレーズ</entry>
+  <entry key="label.keyfile.text">キーファイル</entry>
+  <entry key="button.browse.text">参照</entry>
+  <entry key="label.contentsDir.text">文書フォルダ</entry>
+  <entry key="label.workingDir.text">作業フォルダ</entry>
 </properties>
