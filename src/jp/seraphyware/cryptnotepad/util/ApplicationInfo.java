@@ -2,6 +2,8 @@ package jp.seraphyware.cryptnotepad.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -34,25 +36,44 @@ public final class ApplicationInfo {
     }
 
     /**
-     * メタ情報のマニフェストから、タイトルとバージョンを取得する.
+     * Main-Classをもつ META-INF/MANIFEST.MF から、タイトルとバージョンを取得する.
      * 
      * @throws IOException
      */
     private void load() throws IOException {
         ClassLoader cl = ApplicationInfo.class.getClassLoader();
 
-        Manifest manifest;
-        InputStream is = cl.getResourceAsStream("META-INF/MANIFEST.MF");
-        try {
-            manifest = new Manifest(is);
-        } finally {
-            is.close();
+        // クラスパス上に複数のMANIFEST.MFが存在する可能性あり.
+        // (たとえば QTJava.zip などのextフォルダ上のライブラリなど)
+        Enumeration<URL> manifests = cl.getResources("META-INF/MANIFEST.MF");
+        while (manifests.hasMoreElements()) {
+            URL url = manifests.nextElement();
+
+            // MANIFEST.MFをロードする.
+            Manifest manifest;
+            InputStream is = url.openStream();
+            try {
+                manifest = new Manifest(is);
+
+            } finally {
+                is.close();
+            }
+
+            Attributes mainAttr = manifest.getMainAttributes();
+
+            // メイン属性を読み取る
+            String mainClass = mainAttr.getValue("Main-Class");
+            String title = mainAttr.getValue("Implementation-Title");
+            String version = mainAttr.getValue("Implementation-Version");
+            
+            if (mainClass != null && mainClass.length() > 0 && title != null
+                    && version != null) {
+                // Main-Classが指定されているMANIFEST.MFの指定のみ採用する.
+                this.title = title;
+                this.version = version;
+                break;
+            }
         }
-
-        Attributes mainAttr = manifest.getMainAttributes();
-
-        this.title = mainAttr.getValue("Implementation-Title");
-        this.version = mainAttr.getValue("Implementation-Version");
 
         if (this.title == null || this.version == null) {
             throw new RuntimeException(
