@@ -162,8 +162,14 @@ public class MainFrame extends JFrame {
                 // ドロップハンドラの処理を終了してからインポートダイアログが開くようにする.
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
+                        // パスフレーズの有無を確認する.
+                        if (!checkPassphrase()) {
+                            return;
+                        }
                         for (File dropFile : dropFiles) {
-                            openPlainFile(dropFile);
+                            if (dropFile.isFile()) {
+                                openPlainFile(dropFile);
+                            }
                         }
                     }
                 });
