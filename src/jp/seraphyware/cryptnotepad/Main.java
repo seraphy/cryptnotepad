@@ -20,6 +20,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 
+import jp.seraphyware.cryptnotepad.crypt.CipherCancelException;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.model.SettingsModel;
@@ -113,7 +114,7 @@ public class Main implements Runnable {
             logger.log(Level.SEVERE, "logger initiation failed. " + ex, ex);
         }
     }
-    
+
     /**
      * 診断情報をロギングする.
      */
@@ -140,7 +141,7 @@ public class Main implements Runnable {
                 pw.println(propName + "=" + value);
             }
             pw.println();
-            
+
             // 環境変数一覧
             pw.println("*Environments");
             Map<String, String> envMap = System.getenv();
@@ -152,10 +153,10 @@ public class Main implements Runnable {
                 String value = envMap.get(envName);
                 pw.println(envName + "=" + value);
             }
-            
+
             // ログに書き込み
             logger.log(Level.FINE, sw.toString());
-            
+
         } catch (Exception ex) {
             logger.log(Level.WARNING, "diagnostics error: " + ex, ex);
         }
@@ -326,10 +327,11 @@ public class Main implements Runnable {
             if (appConfigModified) {
                 // 作業フォルダはデフォルトと変更なければ空にして保存する.
                 File workingDir = appConfig.getWorkingDir();
-                if (workingDir.equals(new File(System.getProperty("java.io.tmpdir")))) {
+                if (workingDir.equals(new File(System
+                        .getProperty("java.io.tmpdir")))) {
                     appConfig.setWorkingDir(null);
                 }
-                
+
                 // 設定ファイルを保存する.
                 if (appConfig.save(appConfigFile)) {
                     logger.log(Level.INFO, "config file was saved.");
@@ -353,9 +355,13 @@ public class Main implements Runnable {
     public static void main(String[] args) {
         // ロガー等の初期化
         initLogger();
-        
+
         // 診断情報のプリント
         dumpDiagnostics();
+
+        // キャンセル例外クラスは警告扱いとする.
+        ErrorMessageHelper.addHandler(CipherCancelException.class,
+                ErrorMessageHelper.simpleErrorMessageHandler);
 
         // プロキシのシステム設定の利用を許可
         System.setProperty("java.net.useSystemProxies", "true");

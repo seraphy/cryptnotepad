@@ -142,6 +142,10 @@ public class DocumentController implements SymCipherEventListener {
     public void preEncryption(SymCipherEvent e) {
         // パスフレーズをチェックし、必要ならばUIでパスフレーズを入力してもらう.
         checkPassphrase(e);
+        if (e.isCancel()) {
+            // キャンセルされたら、処理を中断する.
+            return;
+        }
 
         if (!passphraseVerified) {
             // パスフレーズ設定後の最初の保存では、パスフレーズを照合を必要とする.
