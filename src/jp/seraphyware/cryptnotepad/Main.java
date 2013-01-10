@@ -6,6 +6,12 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.Properties;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -105,6 +111,53 @@ public class Main implements Runnable {
             // コンソールに出力する.
             ex.printStackTrace();
             logger.log(Level.SEVERE, "logger initiation failed. " + ex, ex);
+        }
+    }
+    
+    /**
+     * 診断情報をロギングする.
+     */
+    private static void dumpDiagnostics() {
+        if (!logger.isLoggable(Level.FINE)) {
+            // FINEよりも詳細レベルでなければ診断情報はプリントしない.
+            return;
+        }
+        try {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+
+            // システムプロパティ一覧
+            pw.println("*System Properties");
+            Properties sysProps = System.getProperties();
+            TreeSet<String> propNames = new TreeSet<String>();
+            Enumeration<?> enm = sysProps.propertyNames();
+            while (enm.hasMoreElements()) {
+                String propName = (String) enm.nextElement();
+                propNames.add(propName);
+            }
+            for (String propName : propNames) {
+                String value = sysProps.getProperty(propName);
+                pw.println(propName + "=" + value);
+            }
+            pw.println();
+            
+            // 環境変数一覧
+            pw.println("*Environments");
+            Map<String, String> envMap = System.getenv();
+            TreeSet<String> envNames = new TreeSet<String>();
+            for (String envName : envMap.keySet()) {
+                envNames.add(envName);
+            }
+            for (String envName : envNames) {
+                String value = envMap.get(envName);
+                pw.println(envName + "=" + value);
+            }
+            
+            // ログに書き込み
+            logger.log(Level.FINE, sw.toString());
+            
+        } catch (Exception ex) {
+            logger.log(Level.WARNING, "diagnostics error: " + ex, ex);
         }
     }
 
@@ -300,6 +353,9 @@ public class Main implements Runnable {
     public static void main(String[] args) {
         // ロガー等の初期化
         initLogger();
+        
+        // 診断情報のプリント
+        dumpDiagnostics();
 
         // プロキシのシステム設定の利用を許可
         System.setProperty("java.net.useSystemProxies", "true");
