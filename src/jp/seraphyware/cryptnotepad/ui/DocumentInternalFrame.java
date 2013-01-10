@@ -261,6 +261,14 @@ public class DocumentInternalFrame extends JInternalFrame {
      */
     private static File lastUseEncryptedDir;
 
+    public static File getLastUseEncryptedDir() {
+        return lastUseEncryptedDir;
+    }
+
+    public static void setLastUseEncryptedDir(File lastUseEncryptedDir) {
+        DocumentInternalFrame.lastUseEncryptedDir = lastUseEncryptedDir;
+    }
+
     /**
      * 別名保存します.<br>
      * このメソッドは新しいファイル名を選択し、そのファイル名に切り替えたのちに、

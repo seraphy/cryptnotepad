@@ -13,6 +13,7 @@
   <entry key="open.button.title">Open*</entry>
   <entry key="open.button.tooltip">if SHIFT-KEY pressed, Open the Any file.</entry>
 
+  <entry key="verifyPassphrase.title">Verification the Passphrase</entry>
   <entry key="error.password.required">passphrase required. do you want to set up the passphrase?</entry>
 
   <entry key="confirm.title">CONFIRM</entry>

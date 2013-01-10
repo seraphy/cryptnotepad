@@ -16,6 +16,7 @@ import java.beans.PropertyVetoException;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
@@ -31,6 +32,7 @@ import javax.swing.JFrame;
 import javax.swing.JInternalFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 
@@ -38,6 +40,8 @@ import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
 import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
+import jp.seraphyware.cryptnotepad.model.SettingsModel;
+import jp.seraphyware.cryptnotepad.model.DocumentController.PassphraseUIProvider;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.FileDropTarget;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
@@ -47,7 +51,7 @@ import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
  * 
  * @author seraphy
  */
-public class MainFrame extends JFrame {
+public class MainFrame extends JFrame implements PassphraseUIProvider {
 
     private static final long serialVersionUID = 8358190990080417295L;
 
@@ -95,6 +99,7 @@ public class MainFrame extends JFrame {
             this.appConfig = ApplicationSettings.getInstance();
             resource = ResourceBundle.getBundle(getClass().getName(),
                     XMLResourceBundle.CONTROL);
+
             init();
 
         } catch (RuntimeException ex) {
@@ -128,12 +133,20 @@ public class MainFrame extends JFrame {
         fileTreePanel.refresh();
         JPanel leftPanel = createFileTreePanel(fileTreePanel);
 
+        // パスフレーズの入力・確認が必要な場合なハンドラを設定する.
+        documentController.setPassphraseUiProvider(this);
+
         // 文書ディレクトリが変更された場合はリフレッシュする.
         appConfig.addPropertyChangeListener("contentsDir",
                 new PropertyChangeListener() {
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
+                        // ファイル一覧を更新する.
                         fileTreePanel.refresh();
+
+                        // ファイル格納先のディレクトリもあわせておく.
+                        File dir = (File) evt.getNewValue();
+                        DocumentInternalFrame.setLastUseEncryptedDir(dir);
                     }
                 });
 
@@ -162,10 +175,6 @@ public class MainFrame extends JFrame {
                 // ドロップハンドラの処理を終了してからインポートダイアログが開くようにする.
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
-                        // パスフレーズの有無を確認する.
-                        if (!checkPassphrase()) {
-                            return;
-                        }
                         for (File dropFile : dropFiles) {
                             if (dropFile.isFile()) {
                                 openPlainFile(dropFile);
@@ -183,13 +192,37 @@ public class MainFrame extends JFrame {
     }
 
     /**
+     * 設定されているパスフレーズを照合する.
+     */
+    @Override
+    public boolean verifyPassphrase(SettingsModel settingsModel) {
+        String title = resource.getString("verifyPassphrase.title");
+        for (;;) {
+            JPasswordField txtPassphrase = new JPasswordField();
+            int ret = JOptionPane.showConfirmDialog(this, txtPassphrase, title,
+                    JOptionPane.OK_CANCEL_OPTION);
+            if (ret != JOptionPane.OK_OPTION) {
+                // キャンセル
+                return false;
+            }
+            char[] verifyPassphrase = txtPassphrase.getPassword();
+            char[] passphrase = settingsModel.getPassphrase();
+            if (verifyPassphrase != null && passphrase != null
+                    && Arrays.equals(verifyPassphrase, passphrase)) {
+                return true;
+            }
+        }
+    }
+
+    /**
      * パスフレーズの有無を確認し、設定されていなければ設定ダイアログを開けるようにする.<br>
      * パスフレーズを設定されない場合はfalseを返す.<br>
      * 
      * @return パスフレーズが設定されていればtrue、されなかったらfalse
      */
-    protected boolean checkPassphrase() {
-        while (!documentController.getSettingsModel().isValid()) {
+    @Override
+    public boolean requirePassphrase(SettingsModel settingsModel) {
+        while (!settingsModel.isValid()) {
             // パスフレーズが未設定であればエラー表示し、設定画面を開くか問い合わせる.
             String message = resource.getString("error.password.required");
             String title = resource.getString("confirm.title");
@@ -442,11 +475,6 @@ public class MainFrame extends JFrame {
      * 新規用に暗号化用のテキストウィンドウを開く.
      */
     protected void onNew() {
-        // パスフレーズの有無を確認する.
-        if (!checkPassphrase()) {
-            return;
-        }
-
         // 新規にテキストドキュメントを開く.
         createTextInternalFrame(null, null);
     }
@@ -459,11 +487,6 @@ public class MainFrame extends JFrame {
      */
     protected void onOpenFile(File file) {
         if (file == null) {
-            return;
-        }
-
-        // パスフレーズの有無を確認する.
-        if (!checkPassphrase()) {
             return;
         }
 
@@ -500,11 +523,6 @@ public class MainFrame extends JFrame {
      * 任意の非暗号化ファイルを開く.
      */
     protected void onOpenAny() {
-        // パスフレーズの有無を確認する.
-        if (!checkPassphrase()) {
-            return;
-        }
-
         JFileChooser fileChooser = FileChooserEx.createFileChooser(
                 appConfig.getLastUseDir(), false);
         fileChooser.setMultiSelectionEnabled(true);

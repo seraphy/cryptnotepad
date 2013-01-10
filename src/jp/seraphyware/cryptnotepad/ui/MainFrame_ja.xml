@@ -13,6 +13,7 @@
   <entry key="open.button.title">開く*</entry>
   <entry key="open.button.tooltip">シフトキーと共に押下した場合、任意の平文ファイルを開くます.</entry>
 
+  <entry key="verifyPassphrase.title">パスフレーズの確認</entry>
   <entry key="error.password.required">パスフレーズが設定されていません.設定しますか？</entry>
 
   <entry key="confirm.title">確認</entry>

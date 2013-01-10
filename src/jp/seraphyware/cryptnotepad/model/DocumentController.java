@@ -1,5 +1,7 @@
 package jp.seraphyware.cryptnotepad.model;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -17,13 +19,39 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import jp.seraphyware.cryptnotepad.crypt.SymCipher;
+import jp.seraphyware.cryptnotepad.crypt.SymCipherEvent;
+import jp.seraphyware.cryptnotepad.crypt.SymCipherEventListener;
 
 /**
  * ドキュメントの制御クラス.
  * 
  * @author seraphy
  */
-public class DocumentController {
+public class DocumentController implements SymCipherEventListener {
+
+    /**
+     * パスフレーズの要求または確認用のUIハンドラ.<br>
+     */
+    public interface PassphraseUIProvider {
+
+        /**
+         * パスフレーズの入力が必要な場合に呼び出されます.<br>
+         * 
+         * @param settingsModel
+         *            モデル
+         * @return 続行する場合はtrue、キャンセルする場合はfalse
+         */
+        boolean requirePassphrase(SettingsModel settingsModel);
+
+        /**
+         * パスフレーズの照合が必要な場合に呼び出されます.<br>
+         * 
+         * @param settingsModel
+         *            モデル
+         * @return 続行する場合はtrue、キャンセルする場合はfalse
+         */
+        boolean verifyPassphrase(SettingsModel settingsModel);
+    }
 
     /**
      * ロガー.<br>
@@ -47,6 +75,16 @@ public class DocumentController {
     private SymCipher symCipher;
 
     /**
+     * パスフレーズの確認済みフラグ.
+     */
+    private boolean passphraseVerified;
+
+    /**
+     * パスフレーズのUIプロバイダ
+     */
+    private PassphraseUIProvider passphraseUiProvider;
+
+    /**
      * コンストラクタ
      */
     public DocumentController() {
@@ -58,10 +96,32 @@ public class DocumentController {
 
         // 暗号化・復号化器の構築
         symCipher = new SymCipher(settingsModel);
+
+        // パスフレーズ変更イベント検知
+        settingsModel.addPropertyChangeListener("passphrase",
+                new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        // パスフレーズが変更された場合はパスワード確認済みをリセットする.
+                        passphraseVerified = false;
+                    }
+                });
+
+        // 暗号化・復号化前イベント
+        symCipher.addSymCipherEventListener(this);
     }
 
     public void dispose() {
         settingsModel.clear();
+    }
+
+    public void setPassphraseUiProvider(
+            PassphraseUIProvider passphraseUiProvider) {
+        this.passphraseUiProvider = passphraseUiProvider;
+    }
+
+    public PassphraseUIProvider getPassphraseUiProvider() {
+        return passphraseUiProvider;
     }
 
     public SettingsModel getSettingsModel() {
@@ -70,6 +130,48 @@ public class DocumentController {
 
     public SymCipher getSymCipher() {
         return symCipher;
+    }
+
+    @Override
+    public void preDecryption(SymCipherEvent e) {
+        // パスフレーズをチェックし、必要ならばUIでパスフレーズを入力してもらう.
+        checkPassphrase(e);
+    }
+
+    @Override
+    public void preEncryption(SymCipherEvent e) {
+        // パスフレーズをチェックし、必要ならばUIでパスフレーズを入力してもらう.
+        checkPassphrase(e);
+
+        if (!passphraseVerified) {
+            // パスフレーズ設定後の最初の保存では、パスフレーズを照合を必要とする.
+            boolean ret = passphraseUiProvider.verifyPassphrase(settingsModel);
+            if (!ret) {
+                // キャンセルされた場合.
+                e.cancel();
+
+            } else {
+                // パスフレーズの照合済み.
+                passphraseVerified = true;
+            }
+        }
+    }
+
+    /**
+     * パスフレーズをチェックし、必要ならばUIでパスフレーズを入力してもらう.<br>
+     * UIで処理のキャンセルが指示された場合は、それを呼び出し元に伝搬する.<br>
+     * 
+     * @param e
+     *            イベント
+     */
+    protected void checkPassphrase(SymCipherEvent e) {
+        if (!settingsModel.isValid() && passphraseUiProvider != null) {
+            boolean ret = passphraseUiProvider.requirePassphrase(settingsModel);
+            if (!ret || !settingsModel.isValid()) {
+                // キャンセルされたか、まだパスフレーズが確認できなければ処理をキャンセルする.
+                e.cancel();
+            }
+        }
     }
 
     /**
@@ -119,8 +221,11 @@ public class DocumentController {
 
     /**
      * カンマ区切りの拡張子リストのなかに指定された拡張子があるか?
-     * @param ext 拡張子
-     * @param extensions カンマ区切りの拡張子のリスト
+     * 
+     * @param ext
+     *            拡張子
+     * @param extensions
+     *            カンマ区切りの拡張子のリスト
      * @return リストに含まれる場合はtrue
      */
     protected boolean isInExtensions(String ext, String extensions) {

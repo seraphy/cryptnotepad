@@ -25,6 +25,9 @@ public final class ErrorMessageHelper {
     private static final Logger logger = Logger
             .getLogger(ErrorMessageHelper.class.getName());
 
+    /**
+     * プライベートコンストラクタ
+     */
     private ErrorMessageHelper() {
         super();
     }

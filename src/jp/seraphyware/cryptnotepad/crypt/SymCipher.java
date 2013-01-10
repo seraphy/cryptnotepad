@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.crypto.SecretKey;
+import javax.swing.event.EventListenerList;
 
 /**
  * パスフレーズとファイル名を指定して、暗号化・復号化する.
@@ -21,6 +22,11 @@ import javax.crypto.SecretKey;
  * @author seraphy
  */
 public class SymCipher {
+
+    /**
+     * イベントリスナのリスト
+     */
+    private final EventListenerList listeners = new EventListenerList();
 
     /**
      * ソルトのファクトリ
@@ -63,6 +69,56 @@ public class SymCipher {
     }
 
     /**
+     * イベントリスナーを登録します.
+     * 
+     * @param l
+     */
+    public void addSymCipherEventListener(SymCipherEventListener l) {
+        if (l != null) {
+            listeners.add(SymCipherEventListener.class, l);
+        }
+    }
+
+    /**
+     * イベントリスナーを登録解除します.
+     * 
+     * @param l
+     */
+    public void removeSymCipherEventListener(SymCipherEventListener l) {
+        if (l != null) {
+            listeners.remove(SymCipherEventListener.class, l);
+        }
+    }
+
+    /**
+     * 暗号化前イベントの通知
+     * 
+     * @param e
+     *            イベント
+     */
+    protected SymCipherEvent firePreEncryption(SymCipherEvent e) {
+        for (SymCipherEventListener l : listeners
+                .getListeners(SymCipherEventListener.class)) {
+            l.preEncryption(e);
+        }
+        return e;
+    }
+
+    /**
+     * 復号化前イベントの通知
+     * 
+     * @param e
+     *            イベント
+     */
+    protected SymCipherEvent firePreDecryption(SymCipherEvent e) {
+        for (SymCipherEventListener l : listeners
+                .getListeners(SymCipherEventListener.class)) {
+            l.preDecryption(e);
+        }
+        return e;
+    }
+
+    /**
      * 対称暗号化キーを生成する.
      * 
      * @return 対称暗号化キー
@@ -93,6 +149,10 @@ public class SymCipher {
             throw new IllegalArgumentException();
         }
 
+        if (firePreEncryption(new SymCipherEvent(this)).isCancel()) {
+            throw new CipherCancelException();
+        }
+
         SecretKey skey = createSecretKey();
 
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
@@ -117,6 +177,10 @@ public class SymCipher {
     public byte[] decrypt(File file) throws IOException {
         if (file == null || !file.exists()) {
             return null;
+        }
+
+        if (firePreDecryption(new SymCipherEvent(this)).isCancel()) {
+            throw new CipherCancelException();
         }
 
         SecretKey skey = createSecretKey();
