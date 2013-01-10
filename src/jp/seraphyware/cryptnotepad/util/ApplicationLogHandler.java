@@ -42,6 +42,13 @@ public class ApplicationLogHandler extends Handler {
             }
         }
 
+        // ログ設定ファイルより、ログファイルを自動消去しないか判定する.
+        LogManager logManager = LogManager.getLogManager();
+        String strNoRemoveLog = logManager.getProperty("noRemoveLog");
+        if (strNoRemoveLog != null && Boolean.parseBoolean(strNoRemoveLog)) {
+            notRemove = true;
+        }
+
         // 出力ファイル名の確定
         String fname = getCurrentTimeForFileName() + ".log";
         logFile = new File(logsDir, fname);
@@ -60,13 +67,6 @@ public class ApplicationLogHandler extends Handler {
     @Override
     public void close() throws SecurityException {
         synchronized (lock) {
-            // ログ設定ファイルより、ログファイルを自動消去しないか判定する.
-            LogManager logManager = LogManager.getLogManager();
-            String strNoRemoveLog = logManager.getProperty("noRemoveLog");
-            if (strNoRemoveLog != null && Boolean.parseBoolean(strNoRemoveLog)) {
-                notRemove = true;
-            }
-
             if (pw != null) {
                 pw.close();
                 pw = null;
