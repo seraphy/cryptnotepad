@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -309,9 +310,10 @@ public class SettingsDialog extends JDialog {
 
         // パネルの配置
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.add(pnlFileSettings, BorderLayout.NORTH);
-        centerPanel.add(pnlDirSettings, BorderLayout.SOUTH);
+        Box centerPanel = Box.createVerticalBox();
+        centerPanel.add(pnlFileSettings);
+        centerPanel.add(pnlDirSettings);
+        centerPanel.add(Box.createVerticalGlue());
 
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
