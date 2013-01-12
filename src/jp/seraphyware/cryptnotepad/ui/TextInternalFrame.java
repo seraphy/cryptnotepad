@@ -3,12 +3,13 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Cursor;
-import java.awt.Event;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -147,12 +148,14 @@ public class TextInternalFrame extends DocumentInternalFrame {
             }
         };
 
-        im.put(KeyStroke.getKeyStroke('Z', Event.CTRL_MASK), actUndo);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
+                actUndo);
         am.put(actUndo, actUndo);
-        im.put(KeyStroke.getKeyStroke('Y', Event.CTRL_MASK), actRedo);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
+                actRedo);
         am.put(actRedo, actRedo);
-
-        im.put(KeyStroke.getKeyStroke('S', Event.CTRL_MASK), actSave);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
+                actSave);
         am.put(actSave, actSave);
 
         // テキストエリアのスクロール、スクロールバーは縦横ともに常に表示しておく.

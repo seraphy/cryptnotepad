@@ -11,6 +11,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -26,9 +28,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -36,7 +42,9 @@ import javax.swing.JInternalFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JRootPane;
 import javax.swing.JSplitPane;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
@@ -92,6 +100,31 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     private FileTreePanel fileTreePanel;
 
     /**
+     * 設定ダイアログを開くアクション
+     */
+    private Action actSettings;
+
+    /**
+     * 新規ドキュメントを開くアクション
+     */
+    private Action actNew;
+
+    /**
+     * 削除あくジョン
+     */
+    private Action actDelete;
+
+    /**
+     * 開くアクション
+     */
+    private Action actOpen;
+
+    /**
+     * ファイルをダブルクリックしたアクション
+     */
+    private ActionListener actFileDblClicked;
+
+    /**
      * コンストラクタ
      */
     public MainFrame(DocumentController documentController) {
@@ -128,6 +161,70 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
 
         // タイトル
         setTitle(resource.getString("mainframe.title"));
+
+        // アクションの定義
+        actSettings = new AbstractAction(
+                resource.getString("settings.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // 設定ダイアログを開く.
+                onSettings();
+            }
+        };
+
+        actNew = new AbstractAction(resource.getString("new.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // 新規ドキュメントを開く
+                onNew();
+            }
+        };
+
+        actDelete = new AbstractAction(
+                resource.getString("delete.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // シフトキーとともにある場合は任意ファイルを削除する.
+                    onDeleteAny();
+
+                } else {
+                    // 通常の場合はフォーカスされたアイテムを削除する.
+                    onDelete(fileTreePanel.getFocusedFile());
+                }
+            }
+        };
+
+        actOpen = new AbstractAction(resource.getString("open.button.title")) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // 「開く」ボタンを押された場合
+                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // シフトキーとともにある場合は任意ファイルを開く.
+                    onOpenAny();
+
+                } else {
+                    // 通常の場合はフォーカスされたアイテムをオープンする.
+                    onOpenFile(fileTreePanel.getFocusedFile());
+                }
+            }
+        };
+
+        actFileDblClicked = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // ダブルクリックされた場合、「選択ファイル」をオープンする.
+                onOpenFile(fileTreePanel.getSelectedFile());
+            }
+        };
 
         // MDIフレーム
         desktop = new JDesktopPane();
@@ -194,6 +291,14 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
                 ErrorMessageHelper.showErrorDialog(MainFrame.this, ex);
             }
         });
+
+        // キーボードマップ
+        JRootPane rootPane = getRootPane();
+        ActionMap am = rootPane.getActionMap();
+        InputMap im = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        am.put(actSettings, actSettings);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK),
+                actSettings);
     }
 
     /**
@@ -384,75 +489,20 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         fileTreePanel.setBorder(BorderFactory.createTitledBorder(resource
                 .getString("files.border.title")));
 
-        fileTreePanel.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // ダブルクリックされた場合、「選択ファイル」をオープンする.
-                onOpenFile(fileTreePanel.getSelectedFile());
-            }
-        });
+        fileTreePanel.addActionListener(actFileDblClicked);
 
         final JPanel leftPanel = new JPanel(new BorderLayout());
 
-        JButton btnSettings = new JButton(new AbstractAction(
-                resource.getString("settings.button.title")) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // 設定ダイアログを開く.
-                onSettings();
-            }
-        });
+        JButton btnSettings = new JButton(actSettings);
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        JButton btnNew = new JButton(new AbstractAction(
-                resource.getString("new.button.title")) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // 新規ドキュメントを開く
-                onNew();
-            }
-        });
+        JButton btnNew = new JButton(actNew);
         btnNew.setToolTipText(resource.getString("new.button.tooltip"));
 
-        JButton btnDelete = new JButton(new AbstractAction(
-                resource.getString("delete.button.title")) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-                    // シフトキーとともにある場合は任意ファイルを削除する.
-                    onDeleteAny();
-
-                } else {
-                    // 通常の場合はフォーカスされたアイテムを削除する.
-                    onDelete(fileTreePanel.getFocusedFile());
-                }
-            }
-        });
+        JButton btnDelete = new JButton(actDelete);
         btnDelete.setToolTipText(resource.getString("delete.button.tooltip"));
 
-        JButton btnOpen = new JButton(new AbstractAction(
-                resource.getString("open.button.title")) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // 「開く」ボタンを押された場合
-                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-                    // シフトキーとともにある場合は任意ファイルを開く.
-                    onOpenAny();
-
-                } else {
-                    // 通常の場合はフォーカスされたアイテムをオープンする.
-                    onOpenFile(fileTreePanel.getFocusedFile());
-                }
-            }
-        });
+        JButton btnOpen = new JButton(actOpen);
         btnOpen.setToolTipText(resource.getString("open.button.tooltip"));
 
         btnPanel.add(btnNew);
