@@ -6,31 +6,35 @@
 		http://stackoverflow.com/questions/1431315/build-numbers-major-minor-revision
 	-->
 
-	<property name="outputJar" value="CryptNotepad.jar"/>
+	<property name="outputJar" value="CryptNotepad.jar" />
 
-	<property file="build_info.properties"/>
-	<property name="build.number" value="${build.major.number}.${build.minor.number}"/>
+	<property file="build_info.properties" />
+	<property name="build.number" value="${build.major.number}.${build.minor.number}" />
 
-	<target name="default" depends="generateManifest" description="実行可能JARファイルの作成">
-    	<delete dir="work"/>
-    	<mkdir dir="work"/>
+	<!-- マニフェストのバージョン番号を更新しコンパイル後、実行可能jarを作成する -->
+	<target name="default" depends="generateManifest" description="マニフェストのバージョン番号を更新し、コンパイル後、実行可能jarを作成する">
+		<antcall target="compileAndCreateExecutableJar"/>
+	</target>
+
+	<!-- コンパイルと実行可能JARの作成 -->
+	<target name="compileAndCreateExecutableJar" description="コンパイルと実行可能JARファイルの作成">
+		<delete dir="work" />
+		<mkdir dir="work" />
 		<javac srcdir="src" destdir="work" encoding="UTF-8" target="1.6" debug="on">
 			<classpath>
 			</classpath>
-    	</javac>
-    	<copy todir="work">
-    		<fileset dir="src">
-    			<exclude name="**/*.java"/>
-    		</fileset>
+		</javac>
+		<copy todir="work">
+			<fileset dir="src">
+				<exclude name="**/*.java" />
+			</fileset>
 		</copy>
-    	<jar basedir="work"
-    		destfile="${outputJar}"
-    		index="true"
-    		manifest="src/META-INF/MANIFEST.MF">
+		<jar basedir="work" destfile="${outputJar}" index="true" manifest="src/META-INF/MANIFEST.MF">
 		</jar>
-    	<delete dir="work"/>
+		<delete dir="work" />
 	</target>
 
+	<!-- マニフェストの更新とバージョン番号の増加 -->
 	<target name="generateManifest" description="MANIFEST.MFの更新とバージョン番号の増加">
 		<manifest file="src/META-INF/MANIFEST.MF">
 			<attribute name="Main-Class" value="jp.seraphyware.cryptnotepad.Main" />
@@ -48,8 +52,8 @@
 			<attribute name="Implementation-URL" value="https://github.com/seraphy/cryptnotepad" />
 			<attribute name="Implementation-Vendor" value="seraphyware.jp" />
 		</manifest>
-		<propertyfile  file="build_info.properties">
-			<entry key="build.minor.number" type="int" operation="+" value="1"/>
+		<propertyfile file="build_info.properties">
+			<entry key="build.minor.number" type="int" operation="+" value="1" />
 		</propertyfile>
 	</target>
 
