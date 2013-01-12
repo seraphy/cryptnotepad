@@ -38,6 +38,8 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 import jp.seraphyware.cryptnotepad.crypt.CryptUtils;
 import jp.seraphyware.cryptnotepad.model.ApplicationData;
@@ -201,7 +203,24 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     public boolean verifyPassphrase(SettingsModel settingsModel) {
         String title = resource.getString("verifyPassphrase.title");
         for (;;) {
-            JPasswordField txtPassphrase = new JPasswordField();
+            final JPasswordField txtPassphrase = new JPasswordField();
+            txtPassphrase.addAncestorListener(new AncestorListener() {
+                @Override
+                public void ancestorRemoved(AncestorEvent event) {
+                    // do nothing.
+                }
+
+                @Override
+                public void ancestorMoved(AncestorEvent event) {
+                    // do nothing.
+                }
+
+                @Override
+                public void ancestorAdded(AncestorEvent event) {
+                    // JOptionPaneに組み込まれたときにフォーカスをリクエストする.
+                    txtPassphrase.requestFocusInWindow();
+                }
+            });
             int ret = JOptionPane.showConfirmDialog(this, txtPassphrase, title,
                     JOptionPane.OK_CANCEL_OPTION);
             if (ret != JOptionPane.OK_OPTION) {
