@@ -22,14 +22,29 @@ public class ApplicationLogHandler extends Handler {
 
     private static final String LOGS_DIR = "logs";
 
+    /**
+     * ロックオブジェクト
+     */
     private final Object lock = new Object();
 
+    /**
+     * 出力先ログファイル
+     */
     private final File logFile;
 
+    /**
+     * ログ用のプリントライター
+     */
     private PrintWriter pw;
 
+    /**
+     * WARN以上のログがない場合でもログを自動消去しないか?
+     */
     private boolean notRemove;
 
+    /**
+     * コンストラクタ
+     */
     public ApplicationLogHandler() {
         // 出力先の確定
         File appDir = ConfigurationDirUtilities.getUserDataDir();
@@ -43,10 +58,23 @@ public class ApplicationLogHandler extends Handler {
         }
 
         // ログ設定ファイルより、ログファイルを自動消去しないか判定する.
+        // (autoRemoveLogが指定されていないか、falseの場合のみログファイルを自動消去しない.)
         LogManager logManager = LogManager.getLogManager();
-        String strNoRemoveLog = logManager.getProperty("noRemoveLog");
-        if (strNoRemoveLog != null && Boolean.parseBoolean(strNoRemoveLog)) {
+        String strNoRemoveLog = logManager.getProperty("autoRemoveLog");
+        if (strNoRemoveLog != null && !Boolean.parseBoolean(strNoRemoveLog)) {
             notRemove = true;
+        }
+
+        // 古いログファイルを消去する.
+        // logExpireDaysプロパティには日数を指定する.未指定か負の値の場合は処理しない.
+        String strLogExpireDays = logManager.getProperty("logExpireDays");
+        if (strLogExpireDays != null && strLogExpireDays.trim().length() > 0) {
+            int logExpireDays = Integer.parseInt(strLogExpireDays);
+            if (logExpireDays >= 0) {
+                long expiredDate = System.currentTimeMillis()
+                        - (24 * 60 * 60 * 1000 * logExpireDays);
+                purgeLogFiles(logsDir, ".log", expiredDate);
+            }
         }
 
         // 出力ファイル名の確定
@@ -64,6 +92,49 @@ public class ApplicationLogHandler extends Handler {
         this.pw = tmp;
     }
 
+    /**
+     * 期限切れのログファイルを削除する.
+     * 
+     * @param dir
+     *            対象ディレクトリ
+     * @param suffix
+     *            ログファイルを判定するためのファイル名の末尾
+     * @param expiredDate
+     *            期限日を示すエポックタイム
+     */
+    private void purgeLogFiles(File dir, String suffix, long expiredDate) {
+        if (dir == null || suffix == null) {
+            return;
+        }
+        suffix = suffix.toLowerCase();
+        try {
+            for (File file : dir.listFiles()) {
+                String name = file.getName().toLowerCase();
+                if (name.endsWith(suffix)) {
+                    // 末尾が一致した場合
+                    try {
+                        if (file.isDirectory()) {
+                            // ディレクトリなら無視
+                            continue;
+                        }
+                        // ファイルの更新日が引数で指定した日時以前である場合
+                        long lastModified = file.lastModified();
+                        if (lastModified > 0 && lastModified <= expiredDate) {
+                            file.delete();
+                        }
+
+                    } catch (Exception ex) {
+                        // ログファイル準備中の失敗であるため、標準エラー出力に出す.
+                        ex.printStackTrace(System.err);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            // ログファイル準備中の失敗であるため、標準エラー出力に出す.
+            ex.printStackTrace(System.err);
+        }
+    }
+
     @Override
     public void close() throws SecurityException {
         synchronized (lock) {
@@ -72,7 +143,8 @@ public class ApplicationLogHandler extends Handler {
                 pw = null;
             }
             if (logFile != null && !notRemove) {
-                // 警告未満のログしかないくログ消去を指定されている場合は、ログファイルを毎回削除する.
+                // 警告未満のログしかないくログ消去を指定されている場合は、
+                // ログファイルを毎回削除する.
                 if (!logFile.delete()) {
                     System.err.println("can't delete file. " + logFile);
                 }
