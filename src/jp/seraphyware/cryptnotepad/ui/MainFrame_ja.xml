@@ -21,6 +21,6 @@
   <entry key="confirm.close.unsavedchanges">保存していない全ての変更が破棄されます。よろしいですか？</entry>
 
   <entry key="secureerase.title">完全な削除</entry>
-  
+
   <entry key="selectContentType.dialog.title">Content-Typeの選択</entry>
 </properties>

@@ -115,7 +115,9 @@ public class SamplePicturePanel extends JPanel {
 
     /**
      * 画像を指定して構築する.
-     * @param samplePicture 画像、なければnull
+     * 
+     * @param samplePicture
+     *            画像、なければnull
      */
     public SamplePicturePanel(BufferedImage samplePicture) {
         this(null, null);
@@ -123,8 +125,11 @@ public class SamplePicturePanel extends JPanel {
 
     /**
      * 画像と代替テキストを指定して構築する.
-     * @param samplePicture 画像、なければnull
-     * @param alternateText 代替テキスト、なければnull可
+     * 
+     * @param samplePicture
+     *            画像、なければnull
+     * @param alternateText
+     *            代替テキスト、なければnull可
      */
     public SamplePicturePanel(BufferedImage samplePicture, String alternateText) {
         super();
@@ -200,7 +205,9 @@ public class SamplePicturePanel extends JPanel {
 
     /**
      * 画像をフィット・フィット解除する.
-     * @param fullsize 実寸表示するか?
+     * 
+     * @param fullsize
+     *            実寸表示するか?
      */
     public void adjustPreferrerdSize(boolean fullsize) {
         Dimension minSize = getMinimumSize();

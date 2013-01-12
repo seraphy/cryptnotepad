@@ -3,7 +3,8 @@ package jp.seraphyware.cryptnotepad.crypt;
 import java.util.EventObject;
 
 /**
- * SymCipherのイベント. イベントハンドラ側からイベントソースに処理のキャンセルを通知できます.<br>
+ * SymCipherのイベント.<br>
+ * イベントハンドラ側からイベントソースに処理のキャンセルを通知できます.<br>
  * 
  * @author seraphy
  */

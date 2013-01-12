@@ -341,6 +341,14 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
     }
 
+    @Override
+    public boolean documentSecurityError() {
+        String message = resource.getString("error.documentSecurityError");
+        JOptionPane.showMessageDialog(this, message, "ERROR",
+                JOptionPane.ERROR_MESSAGE);
+        return false;
+    }
+
     /**
      * パスフレーズの有無を確認し、設定されていなければ設定ダイアログを開けるようにする.<br>
      * パスフレーズを設定されない場合はfalseを返す.<br>

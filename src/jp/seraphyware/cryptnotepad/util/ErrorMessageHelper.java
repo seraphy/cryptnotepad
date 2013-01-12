@@ -25,13 +25,12 @@ public abstract class ErrorMessageHelper {
      */
     private static final Logger logger = Logger
             .getLogger(ErrorMessageHelper.class.getName());
-    
+
     /**
      * 例外クラスとエラーハンドラ.<br>
      * 例外クラスは完全一致でなければならない.<br>
      */
-    private static HashMap<Class<?>, ErrorMessageHelper> handlers =
-            new HashMap<Class<?>, ErrorMessageHelper>();
+    private static HashMap<Class<?>, ErrorMessageHelper> handlers = new HashMap<Class<?>, ErrorMessageHelper>();
 
     /**
      * デフォルトのエラーメッセージハンドラ.
@@ -70,7 +69,7 @@ public abstract class ErrorMessageHelper {
                     JOptionPane.ERROR_MESSAGE);
         }
     };
-    
+
     /**
      * シンプルな警告メッセージハンドラ.
      */
@@ -85,11 +84,15 @@ public abstract class ErrorMessageHelper {
             logger.log(Level.WARNING, ex.getLocalizedMessage(), ex);
 
             // ダイアログの表示
-            JOptionPane.showMessageDialog(parent, ex.toString(), "ERROR",
+            String msg = ex.getLocalizedMessage();
+            if (msg == null || msg.length() == 0) {
+                msg = ex.toString();
+            }
+            JOptionPane.showMessageDialog(parent, msg, "ERROR",
                     JOptionPane.WARNING_MESSAGE);
         }
     };
-    
+
     /**
      * 例外が発生したことを示すダイアログを表示し、ログに記録する.<br>
      * 
@@ -99,7 +102,7 @@ public abstract class ErrorMessageHelper {
      *            例外、nullの場合はなにもせずに戻る.
      */
     protected abstract void show(Component parent, Throwable ex);
-    
+
     /**
      * 例外が発生したことを示すダイアログを表示し、ログに記録する.<br>
      * 
@@ -112,21 +115,24 @@ public abstract class ErrorMessageHelper {
         if (ex == null) {
             return;
         }
-        
+
         Class<?> cls = ex.getClass();
         ErrorMessageHelper handler = handlers.get(cls);
         if (handler == null) {
             handler = defaultErrorMessageHandler;
         }
-        
+
         handler.show(parent, ex);
     }
-    
+
     /**
      * 例外クラスに対するエラーメッセージハンドラを設定する.<br>
      * 例外クラスは完全一致でなければならない.(継承関係は考慮されない).<br>
-     * @param cls クラス
-     * @param helper メッセージハンドラ
+     * 
+     * @param cls
+     *            クラス
+     * @param helper
+     *            メッセージハンドラ
      */
     public static void addHandler(Class<?> cls, ErrorMessageHelper helper) {
         if (cls == null || helper == null) {
@@ -138,7 +144,9 @@ public abstract class ErrorMessageHelper {
     /**
      * 例外クラスに対するエラーメッセージハンドラを解除する.<br>
      * 例外クラスは完全一致でなければならない.(継承関係は考慮されない).<br>
-     * @param cls クラス
+     * 
+     * @param cls
+     *            クラス
      */
     public static void removeHandler(Class<?> cls) {
         if (cls != null) {

@@ -51,6 +51,13 @@ public class DocumentController implements SymCipherEventListener {
          * @return 続行する場合はtrue、キャンセルする場合はfalse
          */
         boolean verifyPassphrase(SettingsModel settingsModel);
+        
+        /**
+         * ドキュメントがセキュリティ上の理由が開けなかった場合.<br>
+         * (続行すると例外がスローされます.)<br>
+         * @return 続行する場合はtrue、キャンセルする場合はfalse
+         */
+        boolean documentSecurityError();
     }
 
     /**
@@ -149,9 +156,12 @@ public class DocumentController implements SymCipherEventListener {
 
         if (!passphraseVerified) {
             // パスフレーズ設定後の最初の保存では、パスフレーズを照合を必要とする.
-            boolean ret = passphraseUiProvider.verifyPassphrase(settingsModel);
+            boolean ret = false;
+            if (passphraseUiProvider != null) {
+                ret = passphraseUiProvider.verifyPassphrase(settingsModel);
+            }
             if (!ret) {
-                // キャンセルされた場合.
+                // 入力されなかった場合.
                 e.cancel();
 
             } else {
@@ -170,7 +180,10 @@ public class DocumentController implements SymCipherEventListener {
      */
     protected void checkPassphrase(SymCipherEvent e) {
         if (!settingsModel.isValid() && passphraseUiProvider != null) {
-            boolean ret = passphraseUiProvider.requirePassphrase(settingsModel);
+            boolean ret = false;
+            if (passphraseUiProvider != null) {
+                ret = passphraseUiProvider.requirePassphrase(settingsModel);
+            }
             if (!ret || !settingsModel.isValid()) {
                 // キャンセルされたか、まだパスフレーズが確認できなければ処理をキャンセルする.
                 e.cancel();

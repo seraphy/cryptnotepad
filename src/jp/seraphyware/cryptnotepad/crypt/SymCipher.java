@@ -12,9 +12,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.GeneralSecurityException;
+import java.util.ResourceBundle;
 
 import javax.crypto.SecretKey;
 import javax.swing.event.EventListenerList;
+
+import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
  * パスフレーズとファイル名を指定して、暗号化・復号化する.
@@ -27,6 +31,11 @@ public class SymCipher {
      * イベントリスナのリスト
      */
     private final EventListenerList listeners = new EventListenerList();
+
+    /**
+     * リソースバンドル
+     */
+    private ResourceBundle resource;
 
     /**
      * ソルトのファクトリ
@@ -54,6 +63,8 @@ public class SymCipher {
             throw new IllegalArgumentException();
         }
         this.keySource = keySource;
+        resource = ResourceBundle.getBundle(getClass().getName(),
+                XMLResourceBundle.CONTROL);
 
         keySaltFactory = new SymCryptKeySaltFactory();
         keyFactory = new SymCryptKeyFactory();
@@ -149,6 +160,7 @@ public class SymCipher {
             throw new IllegalArgumentException();
         }
 
+        // パスフレーズが設定されているか確認する.
         if (firePreEncryption(new SymCipherEvent(this)).isCancel()) {
             throw new CipherCancelException();
         }
@@ -159,6 +171,11 @@ public class SymCipher {
         OutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
         try {
             CryptUtils.encrypt(skey, bis, bos);
+
+        } catch (GeneralSecurityException ex) {
+            // 書き込み時のセキュリティ例外では、パスフレーズのミスやファイル選択間違いなど
+            // ユーザ操作の不備は基本的には想定されない.
+            throw new IOException(ex);
 
         } finally {
             bos.close();
@@ -179,6 +196,7 @@ public class SymCipher {
             return null;
         }
 
+        // パスフレーズが設定されているか確認する.
         if (firePreDecryption(new SymCipherEvent(this)).isCancel()) {
             throw new CipherCancelException();
         }
@@ -189,6 +207,13 @@ public class SymCipher {
         InputStream bis = new BufferedInputStream(new FileInputStream(file));
         try {
             CryptUtils.decrypt(skey, bis, bos);
+
+        } catch (GeneralSecurityException ex) {
+            // パスフレーズが一致しないかドキュメントの選択を誤ったか、ファイルが破損しているなど
+            // 暗号化解除にかかる問題があった場合.
+            String msg = resource.getString("error.documentSecurityError");
+            throw new DocumentSecurityException(msg + "\r\n"
+                    + file.getAbsolutePath(), ex);
 
         } finally {
             bis.close();

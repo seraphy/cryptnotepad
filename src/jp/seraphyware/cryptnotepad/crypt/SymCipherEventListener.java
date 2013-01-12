@@ -10,13 +10,15 @@ import java.util.EventListener;
 public interface SymCipherEventListener extends EventListener {
 
     /**
-     * 暗号化解除前に呼び出されます.
+     * 暗号化解除前に呼び出されます.<br>
+     * 
      * @param e
      */
     void preEncryption(SymCipherEvent e);
 
     /**
-     * 暗号化前に呼び出されます.
+     * 暗号化前に呼び出されます.<br>
+     * 
      * @param e
      */
     void preDecryption(SymCipherEvent e);

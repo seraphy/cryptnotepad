@@ -19,8 +19,8 @@
   <entry key="confirm.title">CONFIRM</entry>
   <entry key="confirm.erase.file">Are you sure you want to completely remove the selected file. "%s"</entry>
   <entry key="confirm.close.unsavedchanges">This will discard all unsaved changes. Are you sure?</entry>
-  
+
   <entry key="secureerase.title">SECURE ERASE</entry>
-  
+
   <entry key="selectContentType.dialog.title">Select the Content-Type</entry>
 </properties>
