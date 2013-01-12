@@ -5,6 +5,9 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -767,6 +770,16 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      * メインフレームを破棄する場合
      */
     protected void onClosing() {
+        // クリップボードをクリアする.
+        try {
+            Toolkit tk = Toolkit.getDefaultToolkit();
+            Clipboard cb = tk.getSystemClipboard();
+            cb.setContents(new StringSelection(""), null);
+
+        } catch (Exception ex) {
+            logger.log(Level.WARNING, "cannot clear clipboard.", ex);
+        }
+
         // 変更されていない子ウィンドウがあるか検査する.
         boolean needConfirm = false;
         for (JInternalFrame child : desktop.getAllFrames()) {
