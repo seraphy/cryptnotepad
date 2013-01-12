@@ -157,11 +157,19 @@ public class FileTreePanel extends JPanel {
             throw new IllegalStateException(
                     "ApplicationSettings#contentsDirが未設定です.");
         }
+
+        // 現在選択しているアイテムのパスを取得する.
+        File currentSelection = getFocusedFile();
+        DefaultMutableTreeNode restoreNode = null;
+
+        // ルートノード
         DefaultMutableTreeNode root = new DefaultMutableTreeNode(rootDir);
 
+        // ディレクトリ探索のためのキュー
         LinkedList<DefaultMutableTreeNode> queue = new LinkedList<DefaultMutableTreeNode>();
         queue.add(root);
 
+        // ファイルツリーをトラバーサルする.
         while (!queue.isEmpty()) {
             DefaultMutableTreeNode dirNode = queue.pop();
             File dir = (File) dirNode.getUserObject();
@@ -175,7 +183,7 @@ public class FileTreePanel extends JPanel {
                 // ファイル一覧の取得に失敗した場合は空とする.
                 logger.log(Level.INFO, "fileTreeTraversalError." + ex, ex);
             }
-            
+
             if (files == null) {
                 // ファイル一覧が取得できなかった場合
                 files = new File[0];
@@ -192,10 +200,21 @@ public class FileTreePanel extends JPanel {
                 if (file.isDirectory()) {
                     queue.push(node);
                 }
+
+                // リフレッシュ前に選択中のファイルがみつかった場合は、このノードを覚える
+                if (file.equals(currentSelection)) {
+                    restoreNode = node;
+                }
             }
         }
 
         model.setRoot(root);
+
+        // リフレッシュ前の選択を復元する.
+        if (restoreNode != null) {
+            TreePath path = new TreePath(model.getPathToRoot(restoreNode));
+            tree.setSelectionPath(path);
+        }
     }
 
     /**
