@@ -125,6 +125,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     private ActionListener actFileDblClicked;
 
     /**
+     * 最小化する.
+     */
+    private Action actMinimize;
+
+    /**
      * コンストラクタ
      */
     public MainFrame(DocumentController documentController) {
@@ -156,6 +161,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             @Override
             public void windowClosing(WindowEvent e) {
                 onClosing();
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+                onMinimize();
             }
         });
 
@@ -223,6 +233,16 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             public void actionPerformed(ActionEvent e) {
                 // ダブルクリックされた場合、「選択ファイル」をオープンする.
                 onOpenFile(fileTreePanel.getSelectedFile());
+            }
+        };
+
+        actMinimize = new AbstractAction("Icon") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // 最小化する.
+                onEmergencyMinimize();
             }
         };
 
@@ -299,6 +319,9 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         am.put(actSettings, actSettings);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK),
                 actSettings);
+        am.put(actMinimize, actMinimize);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK),
+                actMinimize);
     }
 
     /**
@@ -566,10 +589,12 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      *            ファイル 、nullの場合は何もしない.
      */
     protected void onOpenFile(File file) {
-        if (file == null) {
+        if (file == null || !file.exists() || file.isDirectory()) {
+            // ファイルが存在しないかディレクトリの場合は何もしない.
             return;
         }
 
+        // 現在開いているドキュメントであるか判定する.
         for (JInternalFrame child : desktop.getAllFrames()) {
             if (!child.isDisplayable() || !child.isVisible()) {
                 // 表示されていないか、破棄されたものは除外する.
@@ -844,10 +869,9 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     }
 
     /**
-     * メインフレームを破棄する場合
+     * クリップボードをクリアする.
      */
-    protected void onClosing() {
-        // クリップボードをクリアする.
+    protected void clearClipboard() {
         try {
             Toolkit tk = Toolkit.getDefaultToolkit();
             Clipboard cb = tk.getSystemClipboard();
@@ -856,12 +880,71 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         } catch (Exception ex) {
             logger.log(Level.WARNING, "cannot clear clipboard.", ex);
         }
+    }
+
+    /**
+     * 最小化されたときに呼び出される.
+     */
+    protected void onMinimize() {
+        // パスフレーズを解除する.
+        documentController.getSettingsModel().setPassphrase(null);
+
+        // クリップボードをクリアする.
+        clearClipboard();
+    }
+
+    /**
+     * 緊急最小化する.
+     */
+    protected void onEmergencyMinimize() {
+        // 保存されている、すべてのドキュメントは閉じる
+        for (JInternalFrame child : desktop.getAllFrames()) {
+            if (child.isClosed()) {
+                // すでに閉じられていれば何もしない.
+                continue;
+            }
+            if (child instanceof DocumentInternalFrame) {
+                DocumentInternalFrame c = (DocumentInternalFrame) child;
+                if (!c.isModified()) {
+                    // 編集中ではない場合は閉じる.
+                    c.onClosing();
+
+                } else {
+                    // 編集中の場合は子フレームを最小化する.
+                    try {
+                        c.setIcon(true);
+
+                    } catch (PropertyVetoException ex) {
+                        logger.log(Level.WARNING, "minimize failed.", ex);
+                    }
+                }
+            }
+        }
+
+        // キューに入れて、描画完了後に最小化を実施する。
+        // ウィンドウマネージャは最小化した時点の画面イメージが保持するため、
+        // 最小化するまえにドキュメントの破棄と、それによる描画が完了している必要がある.
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                // 最小化する.
+                setState(JFrame.ICONIFIED);
+            }
+        });
+    }
+
+    /**
+     * メインフレームを破棄する場合
+     */
+    protected void onClosing() {
+        // クリップボードをクリアする.
+        clearClipboard();
 
         // 変更されていない子ウィンドウがあるか検査する.
         boolean needConfirm = false;
         for (JInternalFrame child : desktop.getAllFrames()) {
-            if (!child.isDisplayable() || !child.isVisible()) {
-                // 表示できないか、表示されていないものは除外する.
+            if (child.isClosed()) {
+                // すでに閉じられていれば何もしない.
                 continue;
             }
             if (child instanceof DocumentInternalFrame) {
