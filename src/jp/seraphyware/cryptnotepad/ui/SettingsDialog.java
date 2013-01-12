@@ -305,6 +305,7 @@ public class SettingsDialog extends JDialog {
         ActionMap am = getRootPane().getActionMap();
         InputMap im = getRootPane().getInputMap(
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
+
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), actCancel);
         am.put(actCancel, actCancel);
 

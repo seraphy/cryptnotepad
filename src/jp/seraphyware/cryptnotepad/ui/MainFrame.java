@@ -127,7 +127,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     /**
      * 最小化する.
      */
-    private Action actMinimize;
+    private Action actEmergencyMinimize;
 
     /**
      * コンストラクタ
@@ -236,7 +236,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             }
         };
 
-        actMinimize = new AbstractAction("Icon") {
+        actEmergencyMinimize = new AbstractAction("Icon") {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -316,12 +316,18 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         JRootPane rootPane = getRootPane();
         ActionMap am = rootPane.getActionMap();
         InputMap im = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        int shortcutMask = tk.getMenuShortcutKeyMask();
+
+        // 設定ダイアログは CTRL-E(Macの場合はCMD-E)
         am.put(actSettings, actSettings);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK),
-                actSettings);
-        am.put(actMinimize, actMinimize);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, shortcutMask), actSettings);
+
+        // 緊急最小化はCTRL-Q (Macの場合でもCTRL-Q。CMD-QはOSX標準のアプリ終了のため)
+        am.put(actEmergencyMinimize, actEmergencyMinimize);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK),
-                actMinimize);
+                actEmergencyMinimize);
     }
 
     /**

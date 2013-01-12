@@ -3,8 +3,8 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -90,8 +90,10 @@ public class PictureInternalFrame extends DocumentInternalFrame {
         ActionMap am = this.picturePanel.getActionMap();
         InputMap im = this.picturePanel.getInputMap(JComponent.WHEN_FOCUSED);
 
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
-                actSave);
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        int shortcutMask = tk.getMenuShortcutKeyMask();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, shortcutMask), actSave);
         am.put(actSave, actSave);
 
         Box btnPanel = Box.createHorizontalBox();

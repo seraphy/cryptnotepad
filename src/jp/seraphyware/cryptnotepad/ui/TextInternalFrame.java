@@ -7,8 +7,8 @@ import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
@@ -148,14 +148,14 @@ public class TextInternalFrame extends DocumentInternalFrame {
             }
         };
 
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
-                actUndo);
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        int shortcutMask = tk.getMenuShortcutKeyMask();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, shortcutMask), actUndo);
         am.put(actUndo, actUndo);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
-                actRedo);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, shortcutMask), actRedo);
         am.put(actRedo, actRedo);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
-                actSave);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, shortcutMask), actSave);
         am.put(actSave, actSave);
 
         // テキストエリアのスクロール、スクロールバーは縦横ともに常に表示しておく.

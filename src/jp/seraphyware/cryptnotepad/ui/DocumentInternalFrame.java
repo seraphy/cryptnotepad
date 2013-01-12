@@ -1,7 +1,7 @@
 package jp.seraphyware.cryptnotepad.ui;
 
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyVetoException;
 import java.io.File;
@@ -119,8 +119,10 @@ public class DocumentInternalFrame extends JInternalFrame {
         InputMap im = this
                 .getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, InputEvent.CTRL_DOWN_MASK),
-                actClose);
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        int shortcutMask = tk.getMenuShortcutKeyMask();
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, shortcutMask), actClose);
         am.put(actClose, actClose);
     }
 
