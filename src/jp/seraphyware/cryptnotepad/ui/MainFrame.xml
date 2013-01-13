@@ -23,4 +23,6 @@
   <entry key="secureerase.title">SECURE ERASE</entry>
 
   <entry key="selectContentType.dialog.title">Select the Content-Type</entry>
+
+  <entry key="error.documentSecurityError">Passphrase is incorrect, Or the file is damaged.</entry>
 </properties>

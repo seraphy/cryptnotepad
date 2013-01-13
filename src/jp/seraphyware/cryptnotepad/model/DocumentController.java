@@ -51,13 +51,18 @@ public class DocumentController implements SymCipherEventListener {
          * @return 続行する場合はtrue、キャンセルする場合はfalse
          */
         boolean verifyPassphrase(SettingsModel settingsModel);
-        
+
         /**
          * ドキュメントがセキュリティ上の理由が開けなかった場合.<br>
-         * (続行すると例外がスローされます.)<br>
-         * @return 続行する場合はtrue、キャンセルする場合はfalse
+         * (ハンドルした場合は例外はスローされません.)<br>
+         * 
+         * @param file
+         *            対象ファイル
+         * @param cause
+         *            例外
+         * @return ハンドルされた場合はtrue、そうでなければfalse
          */
-        boolean documentSecurityError();
+        boolean securityError(File file, Throwable cause);
     }
 
     /**
@@ -168,6 +173,33 @@ public class DocumentController implements SymCipherEventListener {
                 // パスフレーズの照合済み.
                 passphraseVerified = true;
             }
+        }
+    }
+
+    /**
+     * 例外の通知を受けた場合.
+     */
+    @Override
+    public void preThrowException(SymCipherEvent e) {
+        if (!e.isModeEncryption()) {
+            // 復号化時の例外の場合
+            File file = e.getFile();
+            Throwable cause = e.getCause();
+            logger.log(Level.INFO, "document decryption failed. " + file, cause);
+
+            // UIに例外を通知する.
+            boolean handled = true;
+            if (passphraseUiProvider != null) {
+                handled = passphraseUiProvider.securityError(file, cause);
+            }
+            if (handled) {
+                // UI側で例外メッセージが表示された場合は
+                // 呼び出し元で例外をスローする必要はないのでキャンセルする.
+                e.setCancel(true);
+            }
+
+            // パスフレーズが誤りである可能性が高いためリセットしておく.
+            settingsModel.setPassphrase(null);
         }
     }
 
@@ -340,11 +372,13 @@ public class DocumentController implements SymCipherEventListener {
      *             失敗
      */
     public Object decrypt(File file) throws IOException {
-        if (file == null || !file.exists()) {
+        byte[] data = symCipher.decrypt(file);
+        if (data == null) {
+            // ファイルが存在しない場合、
+            // もしくは存在しないとみなす場合.
             return null;
         }
 
-        byte[] data = symCipher.decrypt(file);
         HashMap<String, String> headers = new HashMap<String, String>();
 
         int offset = parseHeader(data, headers);
