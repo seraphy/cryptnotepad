@@ -26,6 +26,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 
 import jp.seraphyware.cryptnotepad.Main;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
@@ -93,6 +94,8 @@ public class FileTreePanel extends JPanel {
         model = new DefaultTreeModel(root);
         tree = new JTree(model);
         tree.setRootVisible(false);
+        tree.getSelectionModel().setSelectionMode(
+                TreeSelectionModel.SINGLE_TREE_SELECTION);
 
         JScrollPane scr = new JScrollPane(tree);
 
