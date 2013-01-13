@@ -21,7 +21,6 @@ import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 
 import jp.seraphyware.cryptnotepad.crypt.CipherCancelException;
-import jp.seraphyware.cryptnotepad.crypt.DocumentSecurityException;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.model.SettingsModel;
@@ -362,9 +361,6 @@ public class Main implements Runnable {
 
         // キャンセル例外クラスは警告扱いとする.
         ErrorMessageHelper.addHandler(CipherCancelException.class,
-                ErrorMessageHelper.simpleErrorMessageHandler);
-        // パスフレーズまたはドキュメント破損のエラーは警告扱いとする.
-        ErrorMessageHelper.addHandler(DocumentSecurityException.class,
                 ErrorMessageHelper.simpleErrorMessageHandler);
 
         // プロキシのシステム設定の利用を許可

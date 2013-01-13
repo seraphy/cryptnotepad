@@ -370,12 +370,18 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
     }
 
+    /**
+     * ドキュメントがセキュリティ上の理由が開けなかった場合
+     */
     @Override
-    public boolean documentSecurityError() {
+    public boolean securityError(File file, Throwable casue) {
         String message = resource.getString("error.documentSecurityError");
+        if (file != null) {
+            message += "\r\n" + file.getAbsolutePath();
+        }
         JOptionPane.showMessageDialog(this, message, "ERROR",
                 JOptionPane.ERROR_MESSAGE);
-        return false;
+        return true;
     }
 
     /**

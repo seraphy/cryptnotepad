@@ -13,12 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.GeneralSecurityException;
-import java.util.ResourceBundle;
 
 import javax.crypto.SecretKey;
 import javax.swing.event.EventListenerList;
-
-import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
  * パスフレーズとファイル名を指定して、暗号化・復号化する.
@@ -31,11 +28,6 @@ public class SymCipher {
      * イベントリスナのリスト
      */
     private final EventListenerList listeners = new EventListenerList();
-
-    /**
-     * リソースバンドル
-     */
-    private ResourceBundle resource;
 
     /**
      * ソルトのファクトリ
@@ -62,12 +54,10 @@ public class SymCipher {
         if (keySource == null) {
             throw new IllegalArgumentException();
         }
-        this.keySource = keySource;
-        resource = ResourceBundle.getBundle(getClass().getName(),
-                XMLResourceBundle.CONTROL);
 
-        keySaltFactory = new SymCryptKeySaltFactory();
-        keyFactory = new SymCryptKeyFactory();
+        this.keySource = keySource;
+        this.keySaltFactory = new SymCryptKeySaltFactory();
+        this.keyFactory = new SymCryptKeyFactory();
 
         // キーファイル変更によってソルトのキャッシュをクリアする.
         keySource.addPropertyChangeListener("keyFile",
@@ -130,6 +120,20 @@ public class SymCipher {
     }
 
     /**
+     * 例外イベントの通知
+     * 
+     * @param e
+     *            イベント
+     */
+    protected SymCipherEvent firePreThrowException(SymCipherEvent e) {
+        for (SymCipherEventListener l : listeners
+                .getListeners(SymCipherEventListener.class)) {
+            l.preThrowException(e);
+        }
+        return e;
+    }
+
+    /**
      * 対称暗号化キーを生成する.
      * 
      * @return 対称暗号化キー
@@ -161,7 +165,8 @@ public class SymCipher {
         }
 
         // パスフレーズが設定されているか確認する.
-        if (firePreEncryption(new SymCipherEvent(this)).isCancel()) {
+        SymCipherEvent evt = new SymCipherEvent(this, true, file);
+        if (firePreEncryption(evt).isCancel()) {
             throw new CipherCancelException();
         }
 
@@ -175,6 +180,11 @@ public class SymCipher {
         } catch (GeneralSecurityException ex) {
             // 書き込み時のセキュリティ例外では、パスフレーズのミスやファイル選択間違いなど
             // ユーザ操作の不備は基本的には想定されない.
+            evt.setCause(ex);
+            if (firePreThrowException(evt).isCancel()) {
+                // キャンセルされた場合は例外をスローしない.
+                return;
+            }
             throw new IOException(ex);
 
         } finally {
@@ -183,21 +193,23 @@ public class SymCipher {
     }
 
     /**
-     * 暗号化されたファイルを指定してバイナリデータを復元する. ファイルがなければ空のデータを返す.
+     * 暗号化されたファイルを指定してバイナリデータを復元する.<br>
+     * ファイルがなければ空のデータを返す.<br>
      * 
      * @param file
      *            暗号化されたファイル
-     * @return データ
+     * @return データ、もしくはnull
      * @throws IOException
      *             失敗
      */
     public byte[] decrypt(File file) throws IOException {
-        if (file == null || !file.exists()) {
+        if (file == null || !file.exists() || file.isDirectory()) {
             return null;
         }
 
         // パスフレーズが設定されているか確認する.
-        if (firePreDecryption(new SymCipherEvent(this)).isCancel()) {
+        SymCipherEvent evt = new SymCipherEvent(this, false, file);
+        if (firePreDecryption(evt).isCancel()) {
             throw new CipherCancelException();
         }
 
@@ -211,9 +223,12 @@ public class SymCipher {
         } catch (GeneralSecurityException ex) {
             // パスフレーズが一致しないかドキュメントの選択を誤ったか、ファイルが破損しているなど
             // 暗号化解除にかかる問題があった場合.
-            String msg = resource.getString("error.documentSecurityError");
-            throw new DocumentSecurityException(msg + "\r\n"
-                    + file.getAbsolutePath(), ex);
+            evt.setCause(ex);
+            if (firePreThrowException(evt).isCancel()) {
+                // キャンセルされた場合は結果をnullとして返す.
+                return null;
+            }
+            throw new IOException(ex);
 
         } finally {
             bis.close();

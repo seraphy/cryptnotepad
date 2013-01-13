@@ -22,4 +22,11 @@ public interface SymCipherEventListener extends EventListener {
      * @param e
      */
     void preDecryption(SymCipherEvent e);
+    
+    /**
+     * 例外発生時に例外をスローする前に呼び出されます.
+     * イベントに対するキャンセルの設定は無視されます.
+     * @param e
+     */
+    void preThrowException(SymCipherEvent e);
 }
