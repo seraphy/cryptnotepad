@@ -505,6 +505,9 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         internalFrame.setData(data);
         internalFrame.setFile(file);
 
+        // 読み込み専用であればフラグを立てる.
+        internalFrame.setReadonly(file != null && !file.canWrite());
+
         addInternalFrame(internalFrame);
 
         return internalFrame;
@@ -519,6 +522,9 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         // データとファイル名を設定する.
         internalFrame.setData(data);
         internalFrame.setFile(file);
+
+        // 読み込み専用であればフラグを立てる.
+        internalFrame.setReadonly(file != null && !file.canWrite());
 
         addInternalFrame(internalFrame);
 

@@ -75,9 +75,10 @@ public class PictureInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!isExistFile()
+                if (!isExistFile() || isReadonly()
                         || (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
                     // 新規ドキュメントであるか、シフトキーとともに押された場合
+                    // もしくは読み込み専用である場合
                     onSaveAs();
 
                 } else {
@@ -219,7 +220,9 @@ public class PictureInternalFrame extends DocumentInternalFrame {
      */
     protected void onSave() {
         try {
-            save();
+            if (!isReadonly()) {
+                save();
+            }
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(this, ex);

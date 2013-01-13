@@ -283,7 +283,12 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         @Override
         public void save() throws IOException {
             loadFromWorking();
-            BinaryInternalFrame.this.save();
+            if (!isReadonly()) {
+                BinaryInternalFrame.this.save();
+
+            } else {
+                BinaryInternalFrame.this.saveAs();
+            }
         }
 
         @Override
@@ -327,7 +332,12 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         @Override
         public void save() throws IOException {
             loadFromWorking();
-            BinaryInternalFrame.this.save();
+            if (!isReadonly()) {
+                BinaryInternalFrame.this.save();
+
+            } else {
+                BinaryInternalFrame.this.saveAs();
+            }
         }
 
         @Override

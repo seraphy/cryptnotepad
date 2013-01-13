@@ -10,6 +10,8 @@ import java.awt.GridBagLayout;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -136,9 +138,10 @@ public class TextInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!isExistFile()
+                if (!isExistFile() || isReadonly()
                         || (e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
                     // 新規ドキュメントであるか、シフトキーとともに押された場合
+                    // もしくはREADONLYの場合は別名保存のみ可
                     onSaveAs();
 
                 } else {
@@ -209,6 +212,15 @@ public class TextInternalFrame extends DocumentInternalFrame {
                     }
                 });
 
+        // READONLYプロパティ変更に対応する
+        addPropertyChangeListener(PROPERTY_READONLY,
+                new PropertyChangeListener() {
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        area.setEditable(!isReadonly());
+                    }
+                });
+
         setModified(false);
     }
 
@@ -272,7 +284,9 @@ public class TextInternalFrame extends DocumentInternalFrame {
      */
     protected void onSave() {
         try {
-            save();
+            if (!isReadonly()) {
+                save();
+            }
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(this, ex);

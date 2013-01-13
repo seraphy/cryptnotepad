@@ -3,6 +3,8 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyVetoException;
 import java.io.File;
 import java.io.IOException;
@@ -41,6 +43,8 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
 
     public static final String PROPERTY_MODIFIED = "modified";
 
+    public static final String PROPERTY_READONLY = "readonly";
+
     /**
      * アプリケーション設定
      */
@@ -71,6 +75,11 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
      * 変更フラグ
      */
     private boolean modified;
+
+    /**
+     * 変更不可フラグ
+     */
+    private boolean readonly;
 
     /**
      * インスタンス作成日時
@@ -135,6 +144,14 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
 
         // インスタンス作成日時を設定する.
         instanceCreationTime = new Date();
+
+        // ファイル名変更
+        addPropertyChangeListener(PROPERTY_FILE, new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                updateReadonlyFlag();
+            }
+        });
     }
 
     /**
@@ -191,7 +208,13 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         if (isModified()) {
             marker = "*";
         }
-        setTitle(marker + title);
+
+        String tailMarker = "";
+        if (isReadonly()) {
+            tailMarker = " *READONLY*";
+        }
+
+        setTitle(marker + title + tailMarker);
     }
 
     /**
@@ -276,7 +299,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
     }
 
     /**
-     * 変更フラグを更新する.<br>
+     * 変更フラグを設定する.<br>
      * タイトルの変更マーカーも変更される.
      * 
      * @param modified
@@ -290,6 +313,29 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
 
     public boolean isModified() {
         return modified;
+    }
+
+    /**
+     * 変更不可フラグを設定する.
+     * 
+     * @param readonly
+     */
+    public void setReadonly(boolean readonly) {
+        boolean oldValue = this.readonly;
+        this.readonly = readonly;
+        updateTitle();
+        firePropertyChange(PROPERTY_READONLY, oldValue, readonly);
+    }
+
+    public boolean isReadonly() {
+        return readonly;
+    }
+
+    /**
+     * ファイルの状態から、変更不可フラグを更新する.
+     */
+    protected void updateReadonlyFlag() {
+        setReadonly(file != null && !file.canWrite());
     }
 
     /**
@@ -332,8 +378,10 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
             return;
         }
         if (isExistFile()) {
-            // 上書き保存
-            save();
+            if (!isReadonly()) {
+                // 上書き保存
+                save();
+            }
 
         } else if (create) {
             // 新規保存を試みる
