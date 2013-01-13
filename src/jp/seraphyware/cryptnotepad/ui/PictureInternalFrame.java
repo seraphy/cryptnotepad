@@ -187,29 +187,39 @@ public class PictureInternalFrame extends DocumentInternalFrame {
      * 
      * @throws IOException
      */
+    @Override
+    protected void save() throws IOException {
+        File file = getFile();
+        if (file == null) {
+            throw new IllegalStateException("file is null");
+        }
+
+        if (data == null) {
+            return;
+        }
+
+        String contentType = data.getContentType();
+        byte[] buf = data.getData();
+
+        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+        // ウェイトカーソルにする.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            documentController.encrypt(file, buf, contentType);
+
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+
+        setModified(false);
+    }
+
+    /**
+     * ファイルを上書き保存する.
+     */
     protected void onSave() {
         try {
-            File file = getFile();
-            assert file != null;
-
-            if (data == null) {
-                return;
-            }
-
-            String contentType = data.getContentType();
-            byte[] buf = data.getData();
-
-            // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-            // ウェイトカーソルにする.
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            try {
-                documentController.encrypt(file, buf, contentType);
-
-            } finally {
-                setCursor(Cursor.getDefaultCursor());
-            }
-
-            setModified(false);
+            save();
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(this, ex);
@@ -222,12 +232,12 @@ public class PictureInternalFrame extends DocumentInternalFrame {
      * @throws IOException
      */
     protected void onSaveAs() {
-        saveAs(new Runnable() {
-            @Override
-            public void run() {
-                onSave();
-            }
-        });
+        try {
+            saveAs();
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(this, ex);
+        }
     }
 
     /**

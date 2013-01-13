@@ -5,6 +5,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyVetoException;
 import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.ResourceBundle;
 
 import javax.swing.AbstractAction;
@@ -28,7 +31,7 @@ import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
  * 
  * @author seraphy
  */
-public class DocumentInternalFrame extends JInternalFrame {
+public abstract class DocumentInternalFrame extends JInternalFrame {
 
     private static final long serialVersionUID = 2822332113293639341L;
 
@@ -68,6 +71,11 @@ public class DocumentInternalFrame extends JInternalFrame {
      * 変更フラグ
      */
     private boolean modified;
+
+    /**
+     * インスタンス作成日時
+     */
+    private Date instanceCreationTime;
 
     /**
      * コンストラクタ.<br>
@@ -124,11 +132,15 @@ public class DocumentInternalFrame extends JInternalFrame {
 
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, shortcutMask), actClose);
         am.put(actClose, actClose);
+
+        // インスタンス作成日時を設定する.
+        instanceCreationTime = new Date();
     }
 
     /**
      * 変更がある場合、破棄してもよいか確認する.<br>
      * 変更がなければ常にtrue
+     * 
      * @return 変更がないか、破棄してもよければtrue
      */
     protected boolean checkModify() {
@@ -144,7 +156,7 @@ public class DocumentInternalFrame extends JInternalFrame {
         }
         return true;
     }
-    
+
     /**
      * ウィンドウを閉じる.
      */
@@ -168,9 +180,27 @@ public class DocumentInternalFrame extends JInternalFrame {
     }
 
     /**
-     * ファイル名からウィンドウのタイトルを設定する. ファイルが未指定であれば"untitled"とする.
+     * ファイル名からウィンドウのタイトルを設定する.<br>
+     * ファイルが未指定で、一時タイトルが指定されてなければ"untitled"とする.<br>
+     * また、更新フラグによってマーカーを付与する.<br>
      */
     protected final void updateTitle() {
+        String title = getDocumentTitle();
+
+        String marker = "";
+        if (isModified()) {
+            marker = "*";
+        }
+        setTitle(marker + title);
+    }
+
+    /**
+     * ドキュメントのタイトルを取得する.<br>
+     * ファイルが未指定で、一時タイトルが指定されてなければ"untitled"とする.<br>
+     * 
+     * @return タイトル
+     */
+    public final String getDocumentTitle() {
         String title;
         if (file != null) {
             title = file.getName();
@@ -182,13 +212,12 @@ public class DocumentInternalFrame extends JInternalFrame {
         } else {
             // ファイルが未指定で一時的なタイトルも設定されていない場合はデフォルト名
             title = resource.getString("notitled.title");
-        }
 
-        String marker = "";
-        if (isModified()) {
-            marker = "*";
+            // 現在日時を付与する.
+            SimpleDateFormat dtFmt = new SimpleDateFormat("yyyyMMdd_HHmmss");
+            title += dtFmt.format(instanceCreationTime);
         }
-        setTitle(marker + title);
+        return title;
     }
 
     /**
@@ -287,18 +316,51 @@ public class DocumentInternalFrame extends JInternalFrame {
     }
 
     /**
+     * ファイルの保存.<br>
+     * 
+     * @param create
+     *            ファイル名が設定されてないものも保存する場合はtrue
+     * @param modifiedOnly
+     *            変更されているもののみ保存する場合はtrue
+     * @throws IOException
+     *             失敗
+     */
+    public void requestSave(boolean create, boolean modifiedOnly)
+            throws IOException {
+        if (modifiedOnly && !isModified()) {
+            // 変更ファイルのみ保存する場合、変更されてなければ何もしない.
+            return;
+        }
+        if (isExistFile()) {
+            // 上書き保存
+            save();
+
+        } else if (create) {
+            // 新規保存を試みる
+            saveAs();
+        }
+    }
+
+    /**
+     * ファイルを保存します.<br>
+     * ファイル名は設定済みでなければなりません.<br>
+     * 
+     * @throws IOException
+     *             失敗
+     */
+    protected abstract void save() throws IOException;
+
+    /**
      * 別名保存します.<br>
      * このメソッドは新しいファイル名を選択し、そのファイル名に切り替えたのちに、
      * コールバックを呼び出し、それが成功したら、ファイル名変更のイベントを発生させます.
      * 
      * @param callback
      *            実際の保存を行うためのコールバック
+     * @throws IOException
+     *             失敗
      */
-    protected void saveAs(Runnable callback) {
-        if (callback == null) {
-            throw new IllegalArgumentException();
-        }
-
+    protected void saveAs() throws IOException {
         // アプリケーションベース上のフォルダを既定とする.
         File rootDir = lastUseEncryptedDir;
         if (rootDir == null) {
@@ -306,15 +368,16 @@ public class DocumentInternalFrame extends JInternalFrame {
         }
         JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
                 true);
+        fileChooser.setDialogTitle(getDocumentTitle());
 
         // デフォルトのファイル名の選択
         if (file != null) {
             fileChooser.setSelectedFile(file);
 
-        } else if (temporaryTitle != null) {
+        } else {
             // ファイル名が指定ないが、一時的なタイトルが設定されていれば
             // タイトルをファイル名に用いる.
-            fileChooser.setSelectedFile(new File(temporaryTitle));
+            fileChooser.setSelectedFile(new File(getDocumentTitle()));
         }
 
         int ret = fileChooser.showSaveDialog(this);
@@ -331,8 +394,8 @@ public class DocumentInternalFrame extends JInternalFrame {
         this.file = file;
         updateTitle();
 
-        // 実際の保存処理はコールバックで行う.
-        callback.run();
+        // 実際の保存処理は派生クラスで行う.
+        save();
 
         // ファイル名変更を通知する.
         firePropertyChange(PROPERTY_FILE, oldValue, file);

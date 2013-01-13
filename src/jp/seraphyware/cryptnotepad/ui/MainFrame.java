@@ -105,6 +105,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     private Action actSettings;
 
     /**
+     * 一括保存アクション
+     */
+    private Action actSaveAll;
+
+    /**
      * 新規ドキュメントを開くアクション
      */
     private Action actNew;
@@ -181,6 +186,15 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             public void actionPerformed(ActionEvent e) {
                 // 設定ダイアログを開く.
                 onSettings();
+            }
+        };
+
+        actSaveAll = new AbstractAction("saveAll") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onSaveAll();
             }
         };
 
@@ -324,6 +338,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         am.put(actSettings, actSettings);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, shortcutMask), actSettings);
 
+        // 一括保存はCTRL+SHIFT+S (Macの場合はCMD-SHIFT-S)
+        am.put(actSaveAll, actSaveAll);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, shortcutMask
+                | InputEvent.SHIFT_DOWN_MASK), actSaveAll);
+
         // 緊急最小化はCTRL-Q (Macの場合でもCTRL-Q。CMD-QはOSX標準のアプリ終了のため)
         am.put(actEmergencyMinimize, actEmergencyMinimize);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK),
@@ -407,7 +426,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
         return true;
     }
-    
+
     @Override
     public void fileUpdated(File oldFile, File newFile) {
         fileTreePanel.refresh();
@@ -588,6 +607,39 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         settingsDlg.setLocationRelativeTo(this);
         settingsDlg.setModel(documentController.getSettingsModel());
         settingsDlg.setVisible(true);
+    }
+
+    /**
+     * 全て保存する.
+     */
+    protected void onSaveAll() {
+        try {
+            // まず、既存ドキュメントはすべて更新する.
+            for (JInternalFrame child : desktop.getAllFrames()) {
+                if (child.isClosed()) {
+                    // すでに閉じられていれば何もしない.
+                    continue;
+                }
+                if (child instanceof DocumentInternalFrame) {
+                    DocumentInternalFrame c = (DocumentInternalFrame) child;
+                    c.requestSave(false, false);
+                }
+            }
+            // 未保存・新規ドキュメントを保存する.
+            for (JInternalFrame child : desktop.getAllFrames()) {
+                if (child.isClosed()) {
+                    // すでに閉じられていれば何もしない.
+                    continue;
+                }
+                if (child instanceof DocumentInternalFrame) {
+                    DocumentInternalFrame c = (DocumentInternalFrame) child;
+                    c.requestSave(true, true);
+                }
+            }
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(this, ex);
+        }
     }
 
     /**

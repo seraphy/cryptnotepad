@@ -246,24 +246,33 @@ public class TextInternalFrame extends DocumentInternalFrame {
      * 
      * @throws IOException
      */
+    @Override
+    protected void save() throws IOException {
+        File file = getFile();
+        if (file == null) {
+            throw new IllegalStateException("file is null");
+        }
+        String doc = area.getText();
+
+        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+        // ウェイトカーソルにする.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            documentController.encryptText(file, doc);
+
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+
+        setModified(false);
+    }
+
+    /**
+     * 上書き保存する.<br>
+     */
     protected void onSave() {
         try {
-            File file = getFile();
-            assert file != null;
-
-            String doc = area.getText();
-
-            // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-            // ウェイトカーソルにする.
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            try {
-                documentController.encryptText(file, doc);
-
-            } finally {
-                setCursor(Cursor.getDefaultCursor());
-            }
-
-            setModified(false);
+            save();
 
         } catch (Exception ex) {
             ErrorMessageHelper.showErrorDialog(this, ex);
@@ -272,16 +281,14 @@ public class TextInternalFrame extends DocumentInternalFrame {
 
     /**
      * ファイルを別名保存する.
-     * 
-     * @throws IOException
      */
     protected void onSaveAs() {
-        saveAs(new Runnable() {
-            @Override
-            public void run() {
-                onSave();
-            }
-        });
+        try {
+            saveAs();
+
+        } catch (Exception ex) {
+            ErrorMessageHelper.showErrorDialog(this, ex);
+        }
     }
 
     /**

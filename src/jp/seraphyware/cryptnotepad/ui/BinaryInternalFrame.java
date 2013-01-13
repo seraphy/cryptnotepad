@@ -209,12 +209,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
         @Override
         public void save() throws IOException {
-            saveAs(new Runnable() {
-                @Override
-                public void run() {
-                    onSave();
-                }
-            });
+            BinaryInternalFrame.this.saveAs();
         }
 
         @Override
@@ -288,7 +283,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         @Override
         public void save() throws IOException {
             loadFromWorking();
-            saveFromData();
+            BinaryInternalFrame.this.save();
         }
 
         @Override
@@ -332,7 +327,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         @Override
         public void save() throws IOException {
             loadFromWorking();
-            saveFromData();
+            BinaryInternalFrame.this.save();
         }
 
         @Override
@@ -804,9 +799,10 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
     }
 
     /**
-     * データを暗号化ファイルに保存する.
+     * ファイルの上書き保存.
      */
-    protected void saveFromData() throws IOException {
+    @Override
+    protected void save() throws IOException {
         File file = getFile();
         if (file == null) {
             throw new IllegalStateException("file is not specified.");
@@ -828,19 +824,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
-    }
-
-    /**
-     * ファイルの上書き保存.
-     */
-    protected void onSave() {
-        try {
-            saveFromData();
-            setModified(false);
-
-        } catch (Exception ex) {
-            ErrorMessageHelper.showErrorDialog(this, ex);
-        }
+        setModified(false);
     }
 
     /**
