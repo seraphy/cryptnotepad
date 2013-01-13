@@ -127,18 +127,31 @@ public class DocumentInternalFrame extends JInternalFrame {
     }
 
     /**
-     * ウィンドウを閉じる.
+     * 変更がある場合、破棄してもよいか確認する.<br>
+     * 変更がなければ常にtrue
+     * @return 変更がないか、破棄してもよければtrue
      */
-    protected void onClosing() {
-        // 変更があれば破棄するか確認する.
+    protected boolean checkModify() {
         if (isModified()) {
             String message = resource.getString("confirm.close.unsavedchanges");
             String title = resource.getString("confirm.title");
             int ret = JOptionPane.showConfirmDialog(this, message, title,
                     JOptionPane.YES_NO_OPTION);
             if (ret != JOptionPane.YES_OPTION) {
-                return;
+                // 破棄しない場合はfalseを返す
+                return false;
             }
+        }
+        return true;
+    }
+    
+    /**
+     * ウィンドウを閉じる.
+     */
+    protected void onClosing() {
+        // 変更があれば破棄するか確認する.
+        if (!checkModify()) {
+            return;
         }
 
         // 閉じる.

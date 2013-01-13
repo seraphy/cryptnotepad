@@ -110,7 +110,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     private Action actNew;
 
     /**
-     * 削除あくジョン
+     * 削除アクション
      */
     private Action actDelete;
 
@@ -407,6 +407,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
         return true;
     }
+    
+    @Override
+    public void fileUpdated(File oldFile, File newFile) {
+        fileTreePanel.refresh();
+    }
 
     /**
      * 暗号化されたファイルをロードする.<br>
@@ -477,7 +482,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         final PictureInternalFrame internalFrame = new PictureInternalFrame(
                 documentController);
 
-        //データとファイル名を設定する.
+        // データとファイル名を設定する.
         internalFrame.setData(data);
         internalFrame.setFile(file);
 
@@ -652,7 +657,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             if (contentType != null && contentType.startsWith("image/")) {
                 // 画像データの場合
                 createPictureInternalFrame(file, contents);
-                
+
             } else {
                 // バイナリデータの場合
                 createBinaryInternalFrame(file, contents);
@@ -728,9 +733,15 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             // バイナリデータの構築
             ApplicationData data = new ApplicationData(contentType, buf);
 
-            // 新規にバイナリドキュメントを開く.
-            PictureInternalFrame internalFrame = createPictureInternalFrame(
-                    null, data);
+            DocumentInternalFrame internalFrame;
+            if (contentType.startsWith("image/")) {
+                // 新規に画像ドキュメントを開く.
+                internalFrame = createPictureInternalFrame(null, data);
+
+            } else {
+                // 新規にバイナリドキュメントを開く.
+                internalFrame = createBinaryInternalFrame(null, data);
+            }
 
             // 読み込んだファイルの内容とファイル名を設定する.
             // (未保存のドキュメントとして扱われる)

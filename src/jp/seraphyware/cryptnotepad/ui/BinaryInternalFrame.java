@@ -1,41 +1,41 @@
 package jp.seraphyware.cryptnotepad.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.Timer;
 
 import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
@@ -45,6 +45,17 @@ import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 public class BinaryInternalFrame extends DocumentInternalFrame {
 
     private static final long serialVersionUID = 3954073407495314454L;
+
+    public static final String PROPERTY_CURRENTPROCESS = "currentProcess";
+
+    public static final String PROPERTY_WORKINGFILE = "workingFile";
+
+    public static final String PROPERTY_DATA = "data";
+
+    /**
+     * ワーキングファイルの更新チェック間隔.(mSec)
+     */
+    public static final int TIMER_DELAY = 1500; // 1.5Sec
 
     /**
      * ロガー.<br>
@@ -98,6 +109,261 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
     private JTextField txtStatus;
 
     /**
+     * ワーク用ファイル
+     */
+    private File workingFile;
+
+    /**
+     * ワーク用ファイルの作成時点の更新日時.<br>
+     * 更新判定用.<br>
+     */
+    private long workingFileLastModified;
+
+    /**
+     * ワーク用ファイルの作成時点のサイズ.<br>
+     * 更新判定用.<br>
+     */
+    private long workingFileSize;
+
+    /**
+     * プロセスモードごとの処理内容の分岐用.<br>
+     */
+    protected interface Process {
+
+        /**
+         * 暗号化ファイルの内容をワークファイルにロードする.
+         * 
+         * @throws IOException
+         */
+        void load() throws IOException;
+
+        /**
+         * ワークファイルの内容を暗号化ファイルに保存する.
+         * 
+         * @throws IOException
+         */
+        void save() throws IOException;
+
+        /**
+         * ワークファイルを安全に削除する.
+         * 
+         * @throws IOException
+         */
+        void close() throws IOException;
+
+        /**
+         * ボタン等のUI要素を更新する.
+         */
+        void updateUI();
+    }
+
+    /**
+     * データがない
+     */
+    protected final Process processNoData = new Process() {
+        @Override
+        public void close() throws IOException {
+            throw new IllegalStateException("nodata");
+        }
+
+        @Override
+        public void load() throws IOException {
+            throw new IllegalStateException("nodata");
+        }
+
+        @Override
+        public void save() {
+            throw new IllegalStateException("nodata");
+        }
+
+        @Override
+        public void updateUI() {
+            txtStatus.setForeground(Color.gray);
+            txtStatus.setText(resource.getString("status.nodata.title"));
+
+            actClose.setEnabled(false);
+            actSave.setEnabled(false);
+            actLoad.setEnabled(false);
+
+            setModified(false);
+        }
+
+        public String toString() {
+            return "processNoData";
+        }
+    };
+
+    /**
+     * データはあるがファイルに関連づけられていない
+     */
+    protected final Process processNoMounted = new Process() {
+        @Override
+        public void load() throws IOException {
+            throw new IllegalStateException("nomounted");
+        }
+
+        @Override
+        public void close() throws IOException {
+            throw new IllegalStateException("nomounted");
+        }
+
+        @Override
+        public void save() throws IOException {
+            saveAs(new Runnable() {
+                @Override
+                public void run() {
+                    onSave();
+                }
+            });
+        }
+
+        @Override
+        public void updateUI() {
+            txtStatus.setForeground(Color.red);
+            txtStatus.setText(resource.getString("status.nomounted.title"));
+
+            actClose.setEnabled(false);
+            actSave.setEnabled(true);
+            actLoad.setEnabled(false);
+
+            setModified(false);
+        }
+
+        public String toString() {
+            return "processNoMounted";
+        }
+    };
+
+    /**
+     * データがありファイルもあるが、ワーキングファイルは開かれていない
+     */
+    protected final Process processNoOpened = new Process() {
+        @Override
+        public void load() throws IOException {
+            loadToWorking();
+        }
+
+        @Override
+        public void close() throws IOException {
+            throw new IllegalStateException("noopened");
+        }
+
+        @Override
+        public void save() {
+            throw new IllegalStateException("noopened");
+        }
+
+        @Override
+        public void updateUI() {
+            txtStatus.setForeground(Color.black);
+            txtStatus.setText(resource.getString("status.noopend.title"));
+
+            actClose.setEnabled(false);
+            actSave.setEnabled(false);
+            actLoad.setEnabled(true);
+
+            setModified(false);
+        }
+
+        public String toString() {
+            return "processNoOpened";
+        }
+    };
+
+    /**
+     * ワーキングファイルはあるが、変更されていない.<br>
+     * データファイルはあるかもしれないし、ないかもしれない.<br>
+     */
+    protected final Process processNoModified = new Process() {
+        @Override
+        public void close() throws IOException {
+            eraseWorkingFile();
+        }
+
+        @Override
+        public void load() {
+            throw new IllegalStateException("nomodified");
+        }
+
+        @Override
+        public void save() throws IOException {
+            loadFromWorking();
+            saveFromData();
+        }
+
+        @Override
+        public void updateUI() {
+            txtStatus.setForeground(Color.blue);
+            txtStatus.setText(resource.getString("status.nomodified.title"));
+
+            actClose.setEnabled(true);
+            actSave.setEnabled(true); // 変更が確認できなくてもSave可
+            actLoad.setEnabled(false);
+
+            // ワーキングファイルがある時点で更新あり、とみなす.
+            setModified(true);
+        }
+
+        public String toString() {
+            return "processNoModified";
+        }
+    };
+
+    /**
+     * ワーキングファイルは変更されている.<br>
+     * データファイルはあるかもしれないし、ないかもしれない.<br>
+     */
+    protected final Process processModified = new Process() {
+        @Override
+        public void close() throws IOException {
+            if (confirmDestroy()) {
+                eraseWorkingFile();
+            }
+        }
+
+        @Override
+        public void load() throws IOException {
+            if (confirmDestroy()) {
+                eraseWorkingFile();
+                loadToWorking();
+            }
+        }
+
+        @Override
+        public void save() throws IOException {
+            loadFromWorking();
+            saveFromData();
+        }
+
+        @Override
+        public void updateUI() {
+            txtStatus.setForeground(Color.red);
+            txtStatus.setText(resource.getString("status.modified.title"));
+
+            actClose.setEnabled(true);
+            actSave.setEnabled(true);
+            actLoad.setEnabled(false);
+
+            // ワーキングファイルがある時点で更新あり、とみなす.
+            setModified(true);
+        }
+
+        public String toString() {
+            return "processModified";
+        }
+    };
+
+    /**
+     * 現在のプロセスモード
+     */
+    protected Process currentProcess;
+
+    /**
+     * 定期的にワーキングファイルの更新を確認するためのタイマー
+     */
+    private Timer timer;
+
+    /**
      * コンストラクタ
      * 
      * @param documentController
@@ -116,8 +382,13 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // TODO Auto-generated method stub
+                try {
+                    currentProcess.load();
 
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(
+                            BinaryInternalFrame.this, ex);
+                }
             }
         };
         actOpen = new AbstractAction(resource.getString("open.button.title")) {
@@ -125,8 +396,16 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // TODO Auto-generated method stub
+                try {
+                    if (workingFile != null && workingFile.exists()) {
+                        Desktop desktop = Desktop.getDesktop();
+                        desktop.open(workingFile);
+                    }
 
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(
+                            BinaryInternalFrame.this, ex);
+                }
             }
         };
         actSave = new AbstractAction(resource.getString("save.button.title")) {
@@ -134,8 +413,13 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // 上書き保存
-                onSave();
+                try {
+                    currentProcess.save();
+
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(
+                            BinaryInternalFrame.this, ex);
+                }
             }
         };
         actClose = new AbstractAction(resource.getString("close.button.title")) {
@@ -143,8 +427,13 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // TODO Auto-generated method stub
+                try {
+                    currentProcess.close();
 
+                } catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(
+                            BinaryInternalFrame.this, ex);
+                }
             }
         };
 
@@ -247,13 +536,11 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         contentPane.setLayout(new BorderLayout());
         contentPane.add(centerPnl, BorderLayout.CENTER);
 
-        addPropertyChangeListener(PROPERTY_FILE, new PropertyChangeListener() {
+        // プロパティ変更によってUI要素を更新する.
+        addPropertyChangeListener(new PropertyChangeListener() {
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
-                // ファイルが設定された場合
-                File file = getFile();
-                txtSourceFile.setText((file == null) ? "" : file
-                        .getAbsolutePath());
+                BinaryInternalFrame.this.stateUIChange(evt);
             }
         });
 
@@ -273,17 +560,195 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             });
         }
 
+        // 初期ステータス
+        setCurrentProcess(processNoData);
+        actOpen.setEnabled(false);
         setModified(false);
+
+        // タイマーの設定
+        timer = new Timer(TIMER_DELAY, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updateState();
+            }
+        });
+        timer.start();
+    }
+
+    /**
+     * ワーキングファイルに変更がある場合に破棄してもよいか確認する.<br>
+     * ワーキングファイルを作成していないか、変更していなければ常にtrue.<br>
+     * 
+     * @return 破棄しても良い場合はtrue
+     */
+    protected boolean confirmDestroy() {
+        if (isWorkingFileModified()) {
+            String message = resource.getString("confirm.close.unsavedchanges");
+            String title = resource.getString("confirm.title");
+            int ret = JOptionPane.showConfirmDialog(this, message, title,
+                    JOptionPane.YES_NO_OPTION);
+            if (ret != JOptionPane.YES_OPTION) {
+                // 破棄しない場合はfalseを返す
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    protected void onClosing() {
+        if (!checkModify()) {
+            // 更新ファイルがあるので破棄しない場合はクローズを中断する.
+            return;
+        }
+        setModified(false);
+
+        for (;;) {
+            try {
+                // ワークファイルの削除(あれば)
+                eraseWorkingFile();
+
+            } catch (IOException ex) {
+                // ワークファイルの削除に失敗した場合はリトライを試行できる.
+                int ret = JOptionPane.showConfirmDialog(this, ex.toString(),
+                        "RETRY?", JOptionPane.OK_CANCEL_OPTION,
+                        JOptionPane.ERROR_MESSAGE);
+                if (ret != JOptionPane.CANCEL_OPTION) {
+                    // リトライ
+                    continue;
+                }
+            }
+            // ワークファイルの削除の成否を問わずクローズを続行する.
+            break;
+        }
+
+        // タイマーの停止
+        timer.stop();
+
+        super.onClosing();
+    }
+
+    public void setCurrentProcess(Process currentProcess) {
+        logger.log(Level.INFO, "currentProcess=" + currentProcess);
+        Process oldValue = this.currentProcess;
+        this.currentProcess = currentProcess;
+        firePropertyChange(PROPERTY_CURRENTPROCESS, oldValue, currentProcess);
+    }
+
+    public Process getCurrentProcess() {
+        return currentProcess;
+    }
+
+    /**
+     * プロパティ変更通知をうけて画面のUI要素の更新を行う.<br>
+     * 
+     * @param evt
+     *            プロパティ変更通知
+     */
+    protected void stateUIChange(PropertyChangeEvent evt) {
+        String name = evt.getPropertyName();
+
+        if (PROPERTY_MODIFIED.equals(name)) {
+            // 変更フラグ、プロセスモードの変更通知は、ここでは処理しない.
+            return;
+        }
+
+        if (PROPERTY_CURRENTPROCESS.equals(name)) {
+            // カレントプロセスモードが変更された場合は画面の状態を更新する.
+            currentProcess.updateUI();
+            return;
+        }
+
+        if (PROPERTY_FILE.equals(name)) {
+            // ファイルが設定された場合
+            File file = getFile();
+            txtSourceFile.setText((file == null) ? "" : file.getAbsolutePath());
+        }
+
+        if (PROPERTY_WORKINGFILE.equals(name)) {
+            // ワーキングファイルが設定された場合
+            File workingFile = getWorkingFile();
+            txtWorkingFile.setText((workingFile == null) ? "" : workingFile
+                    .getAbsolutePath());
+            actOpen.setEnabled(workingFile != null && workingFile.exists());
+        }
+
+        // ファイルやワークファイル等の状態変更があった場合は、
+        // プロセスモードの更新をチェックする.
+        updateState();
+    }
+
+    /**
+     * データ、ファイル、ワークファイルの状態をもとに、 現在のプロセスモードを更新する.<br>
+     */
+    protected void updateState() {
+        File file = getFile();
+        ApplicationData data = getData();
+
+        Process process;
+        if (data == null) {
+            // データがない
+            process = processNoData;
+
+        } else if (file == null || !file.exists()) {
+            // データはあるがファイルがない (新規)
+            process = processNoMounted;
+
+        } else if (workingFile == null) {
+            // データがありファイルもあるがワークファイルは作成していない(既存)
+            process = processNoOpened;
+
+        } else if (!isWorkingFileModified()) {
+            // ワークファイルがあるが変更されていない.
+            process = processNoModified;
+
+        } else {
+            // ワークファイルがあり変更されている.
+            process = processModified;
+        }
+
+        setCurrentProcess(process);
+    }
+
+    /**
+     * ワーキングファイルを設定します.
+     * 
+     * @param workingFile
+     */
+    public void setWorkingFile(File workingFile) {
+        File oldValue = this.workingFile;
+        this.workingFile = workingFile;
+        firePropertyChange(PROPERTY_WORKINGFILE, oldValue, workingFile);
+    }
+
+    /**
+     * ワーキングファイルを取得します.
+     */
+    public File getWorkingFile() {
+        return workingFile;
+    }
+
+    /**
+     * ワーキングファイルが変更されているか? ワーキングファイルが設定されていない場合は変更なしとみなす.
+     * 
+     * @return ワーキングファイルが変更されている場合はtrue.
+     */
+    protected boolean isWorkingFileModified() {
+        if (workingFile == null || !workingFile.exists()) {
+            // ワーキングファイルが未設定か、削除された場合は変更なしとみなす.
+            return false;
+        }
+        long lastModified = workingFile.lastModified();
+        long size = workingFile.length();
+
+        return (workingFileLastModified != lastModified)
+                || (workingFileSize != size);
     }
 
     public void setData(ApplicationData data) {
         ApplicationData oldValue = this.data;
         this.data = data;
-
-        // TODO:loadPicture();
-
-        firePropertyChange("data", oldValue, data);
-
+        firePropertyChange(PROPERTY_DATA, oldValue, data);
         setModified(false);
     }
 
@@ -292,32 +757,85 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
     }
 
     /**
-     * ファイルを上書き保存する.
+     * ワークファイルを削除する.
      * 
      * @throws IOException
      */
+    protected void eraseWorkingFile() throws IOException {
+        if (workingFile == null) {
+            return;
+        }
+
+        // 安全な消去
+        documentController.getSymCipher().delete(workingFile);
+
+        // プロパティの更新
+        setWorkingFile(null);
+    }
+
+    /**
+     * ワークファイルからデータを取得する.
+     * 
+     * @throws IOException
+     */
+    protected void loadFromWorking() throws IOException {
+        if (workingFile == null) {
+            throw new IllegalStateException("working file is not specified.");
+        }
+        if (data == null) {
+            throw new IllegalStateException("no-data");
+        }
+
+        // ワークファイルから読み込み
+        byte[] contents = documentController.loadBinary(workingFile);
+        if (contents == null) {
+            // ワークファイルが削除されていた場合はワーキングファイルを閉じたことにする.
+            eraseWorkingFile();
+
+        } else {
+            // ワークファイルの内容を暗号化ファイルに格納
+            String contentType = data.getContentType();
+
+            // プロパティの更新
+            this.workingFileLastModified = workingFile.lastModified();
+            this.workingFileSize = workingFile.length();
+            setData(new ApplicationData(contentType, contents));
+        }
+    }
+
+    /**
+     * データを暗号化ファイルに保存する.
+     */
+    protected void saveFromData() throws IOException {
+        File file = getFile();
+        if (file == null) {
+            throw new IllegalStateException("file is not specified.");
+        }
+        if (data == null) {
+            throw new IllegalStateException("no-data.");
+        }
+
+        // ワークファイルの内容を暗号化ファイルに格納
+        String contentType = data.getContentType();
+        byte[] contents = data.getData();
+
+        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+        // ウェイトカーソルにする.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            documentController.encrypt(file, contents, contentType);
+
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
+
+    /**
+     * ファイルの上書き保存.
+     */
     protected void onSave() {
         try {
-            File file = getFile();
-            assert file != null;
-
-            if (data == null) {
-                return;
-            }
-
-            String contentType = data.getContentType();
-            byte[] buf = data.getData();
-
-            // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-            // ウェイトカーソルにする.
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            try {
-                documentController.encrypt(file, buf, contentType);
-
-            } finally {
-                setCursor(Cursor.getDefaultCursor());
-            }
-
+            saveFromData();
             setModified(false);
 
         } catch (Exception ex) {
@@ -326,32 +844,52 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
     }
 
     /**
-     * ファイルを別名保存する.
+     * データをワークファイルにロードする.
      * 
      * @throws IOException
      */
-    protected void onSaveAs() {
-        saveAs(new Runnable() {
-            @Override
-            public void run() {
-                onSave();
-            }
-        });
-    }
-
-    /**
-     * テキストを平文で外部ファイルにエクスポートする.
-     */
-    protected void onExport() {
-        try {
-            File file = showExportDialog();
-            if (file != null && data != null) {
-                byte[] buf = data.getData();
-                documentController.savePlainBinary(file, buf);
-            }
-
-        } catch (Exception ex) {
-            ErrorMessageHelper.showErrorDialog(this, ex);
+    protected void loadToWorking() throws IOException {
+        if (workingFile != null) {
+            throw new IllegalStateException("working file is already exists.");
         }
+
+        // 出力する一時ファイル名を選定する.
+        String workingFileName;
+        File file = getFile();
+        if (file != null) {
+            // ファイル名があれば、それを用いる.
+            workingFileName = file.getName();
+        } else {
+            // 一時タイトルがあれば、それを用いる.
+            workingFileName = getTemporaryTitle();
+        }
+        if (workingFileName != null && workingFileName.length() > 0) {
+            // ファイル名のうち最終パスだけを採用する.
+            workingFileName = new File(workingFileName).getName();
+        }
+
+        // 一時ファイル名を決定する.
+        File workingFile;
+        File workDir = appConfig.getWorkingDir();
+        if (workingFileName == null || workingFileName.trim().length() == 0) {
+            // 一時ファイル名を自動で設定
+            workingFile = File.createTempFile("crynote", ".tmp", workDir);
+
+        } else {
+            // 既存ファイル名もしくは一時タイトルからファイル名を決定
+            workingFile = new File(workDir, workingFileName);
+        }
+
+        // ワーキングファイルに出力
+        byte[] content = data.getData();
+        documentController.savePlainBinary(workingFile, content);
+
+        // ワーキングファイルへの書き出し時点のファイル更新日時とサイズを保存
+        this.workingFileLastModified = workingFile.lastModified();
+        this.workingFileSize = workingFile.length();
+
+        // プロパティの更新
+        setWorkingFile(workingFile);
+        setModified(true);
     }
 }

@@ -63,6 +63,16 @@ public class DocumentController implements SymCipherEventListener {
          * @return ハンドルされた場合はtrue、そうでなければfalse
          */
         boolean securityError(File file, Throwable cause);
+
+        /**
+         * ファイルが作成または変更されたことを通知する.
+         * 
+         * @param oldFile
+         *            nullの場合は新規作成
+         * @param newFile
+         *            nullの場合は削除
+         */
+        void fileUpdated(File oldFile, File newFile);
     }
 
     /**
@@ -552,14 +562,21 @@ public class DocumentController implements SymCipherEventListener {
         if (file == null) {
             throw new IllegalArgumentException();
         }
-        if (text == null) {
-            text = "";
+
+        FileUpdateNotifier notifier = new FileUpdateNotifier(file);
+        try {
+            if (text == null) {
+                text = "";
+            }
+
+            String encoding = settingsModel.getEncoding();
+            byte[] data = text.getBytes(encoding);
+
+            encrypt(file, data, "text/plain; charset=" + encoding);
+
+        } finally {
+            notifier.checkAndNotify();
         }
-
-        String encoding = settingsModel.getEncoding();
-        byte[] data = text.getBytes(encoding);
-
-        encrypt(file, data, "text/plain; charset=" + encoding);
     }
 
     /**
@@ -575,19 +592,27 @@ public class DocumentController implements SymCipherEventListener {
         if (file == null) {
             throw new IllegalArgumentException();
         }
-        if (text == null) {
-            text = "";
-        }
 
-        String encoding = settingsModel.getEncoding();
-        byte[] data = text.getBytes(encoding);
-
-        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+        FileUpdateNotifier notifier = new FileUpdateNotifier(file);
         try {
-            os.write(data);
+            if (text == null) {
+                text = "";
+            }
+
+            String encoding = settingsModel.getEncoding();
+            byte[] data = text.getBytes(encoding);
+
+            OutputStream os = new BufferedOutputStream(new FileOutputStream(
+                    file));
+            try {
+                os.write(data);
+
+            } finally {
+                os.close();
+            }
 
         } finally {
-            os.close();
+            notifier.checkAndNotify();
         }
     }
 
@@ -607,6 +632,7 @@ public class DocumentController implements SymCipherEventListener {
         if (file == null || mime == null || mime.length() == 0) {
             throw new IllegalArgumentException();
         }
+
         if (data == null) {
             data = new byte[0];
         }
@@ -627,7 +653,13 @@ public class DocumentController implements SymCipherEventListener {
             buf = bos.toByteArray();
         }
 
-        symCipher.encrypt(buf, file);
+        FileUpdateNotifier notifier = new FileUpdateNotifier(file);
+        try {
+            symCipher.encrypt(buf, file);
+
+        } finally {
+            notifier.checkAndNotify();
+        }
     }
 
     /**
@@ -643,16 +675,50 @@ public class DocumentController implements SymCipherEventListener {
         if (file == null) {
             throw new IllegalArgumentException();
         }
-        if (data == null) {
-            data = new byte[0];
-        }
 
-        OutputStream os = new BufferedOutputStream(new FileOutputStream(file));
+        FileUpdateNotifier notifier = new FileUpdateNotifier(file);
         try {
-            os.write(data);
+            if (data == null) {
+                data = new byte[0];
+            }
+
+            OutputStream os = new BufferedOutputStream(new FileOutputStream(
+                    file));
+            try {
+                os.write(data);
+
+            } finally {
+                os.close();
+            }
 
         } finally {
-            os.close();
+            notifier.checkAndNotify();
+        }
+    }
+
+    /**
+     * ファイルの作成または更新を検知するヘルパークラス.<br>
+     */
+    private class FileUpdateNotifier {
+
+        private File file;
+
+        private boolean exists;
+
+        FileUpdateNotifier(File file) {
+            this.file = file;
+            if (file != null) {
+                exists = file.exists();
+            }
+        }
+
+        void checkAndNotify() {
+            if (file != null && file.exists()) {
+                if (passphraseUiProvider != null) {
+                    File oldFile = exists ? file : null;
+                    passphraseUiProvider.fileUpdated(oldFile, file);
+                }
+            }
         }
     }
 }

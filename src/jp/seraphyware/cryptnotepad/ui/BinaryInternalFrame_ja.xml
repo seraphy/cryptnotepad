@@ -7,9 +7,18 @@
   <entry key="status.label.text">作業用ファイルの状態</entry>
   <entry key="textField.tooltip">ダブルクリックすると、ファイルのパスをクリップボードにコピーします。</entry>
 
+  <entry key="status.nodata.title">データなし</entry>
+  <entry key="status.noopend.title">保存済み</entry>
+  <entry key="status.nomounted.title">未保存</entry>
+  <entry key="status.nomodified.title">ワークファイルはオン・キャッシュ状態です。</entry>
+  <entry key="status.modified.title">ワークファイルは変更されています。</entry>
+
   <entry key="load.button.title">作業ファイルの作成</entry>
   <entry key="reload.button.title">作業ファイル再作成</entry>
   <entry key="open.button.title">作業ファイルを開く</entry>
   <entry key="save.button.title">作業ファイルを暗号化する</entry>
   <entry key="close.button.title">作業ファイルを削除する</entry>
+
+  <entry key="confirm.title">確認</entry>
+  <entry key="confirm.close.unsavedchanges">未保存の変更があります。変更を破棄しますか?</entry>
 </properties>

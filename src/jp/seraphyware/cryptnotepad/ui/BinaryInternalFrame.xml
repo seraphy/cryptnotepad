@@ -7,9 +7,18 @@
   <entry key="status.label.text">Status</entry>
   <entry key="textField.tooltip">if double-clicked, Copy path of a file to the clipboard.</entry>
 
+  <entry key="status.nodata.title">no data</entry>
+  <entry key="status.noopend.title">saved.</entry>
+  <entry key="status.nomounted.title">unsaved.</entry>
+  <entry key="status.nomodified.title">workibng file is on the cache.</entry>
+  <entry key="status.modified.title">working file is modified.</entry>
+
   <entry key="load.button.title">Load</entry>
   <entry key="reload.button.title">Reload</entry>
   <entry key="open.button.title">Open</entry>
   <entry key="save.button.title">Save</entry>
   <entry key="close.button.title">Close</entry>
+
+  <entry key="confirm.title">CONFIRM</entry>
+  <entry key="confirm.close.unsavedchanges">You have unsaved changes. Do you want to discard your changes?</entry>
 </properties>
