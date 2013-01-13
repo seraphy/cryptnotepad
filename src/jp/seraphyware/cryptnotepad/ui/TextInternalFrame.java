@@ -9,6 +9,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -22,6 +23,7 @@ import javax.swing.ActionMap;
 import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFormattedTextField;
@@ -29,12 +31,16 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
+import javax.swing.UIManager;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.PlainDocument;
 import javax.swing.undo.UndoManager;
 
 import jp.seraphyware.cryptnotepad.model.DocumentController;
@@ -56,9 +62,28 @@ public class TextInternalFrame extends DocumentInternalFrame {
     private ResourceBundle resource;
 
     /**
+     * テキストエリアのドキュメントモデル
+     */
+    private PlainDocument plainDocument;
+
+    /**
      * テキストエリア
      */
     private JTextArea area;
+
+    private JTextArea area2;
+
+    /**
+     * テキストエリアのスクロールペイン
+     */
+    private JScrollPane scr;
+
+    private JScrollPane scr2;
+
+    /**
+     * スプリットペイン
+     */
+    private JSplitPane splt;
 
     /**
      * Undoマネージャ
@@ -78,7 +103,9 @@ public class TextInternalFrame extends DocumentInternalFrame {
 
         updateTitle();
 
-        this.area = new JTextArea();
+        this.plainDocument = new PlainDocument();
+        this.area = new JTextArea(this.plainDocument);
+        this.area2 = new JTextArea(this.plainDocument);
         this.area.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void removeUpdate(DocumentEvent e) {
@@ -103,14 +130,19 @@ public class TextInternalFrame extends DocumentInternalFrame {
             // フォントを適用する.
             Font newFont = new Font(fontName, Font.PLAIN, fontSize);
             area.setFont(newFont);
+            area2.setFont(newFont);
         }
 
         // Undo/Redoに対応する.
         this.undoManager = new UndoManager();
+        this.plainDocument.addUndoableEditListener(new UndoableEditListener() {
+            @Override
+            public void undoableEditHappened(UndoableEditEvent e) {
+                undoManager.addEdit(e.getEdit());
+            }
+        });
 
-        ActionMap am = this.area.getActionMap();
-        InputMap im = this.area.getInputMap(JComponent.WHEN_FOCUSED);
-
+        // Undoアクション
         AbstractAction actUndo = new AbstractAction("undo") {
             private static final long serialVersionUID = 1L;
 
@@ -121,6 +153,8 @@ public class TextInternalFrame extends DocumentInternalFrame {
                 }
             }
         };
+
+        // Redoアクション
         AbstractAction actRedo = new AbstractAction("redo") {
             private static final long serialVersionUID = 1L;
 
@@ -132,6 +166,7 @@ public class TextInternalFrame extends DocumentInternalFrame {
             }
         };
 
+        // Saveアクション
         final AbstractAction actSave = new AbstractAction(
                 resource.getString("save.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -151,23 +186,36 @@ public class TextInternalFrame extends DocumentInternalFrame {
             }
         };
 
+        // キーマップ
+
         Toolkit tk = Toolkit.getDefaultToolkit();
         int shortcutMask = tk.getMenuShortcutKeyMask();
 
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, shortcutMask), actUndo);
-        am.put(actUndo, actUndo);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, shortcutMask), actRedo);
-        am.put(actRedo, actRedo);
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, shortcutMask), actSave);
-        am.put(actSave, actSave);
+        JComponent[] comps = { area, area2 };
+        for (JComponent comp : comps) {
+            ActionMap am = comp.getActionMap();
+            InputMap im = comp.getInputMap(JComponent.WHEN_FOCUSED);
+
+            im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, shortcutMask), actUndo);
+            am.put(actUndo, actUndo);
+            im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, shortcutMask), actRedo);
+            am.put(actRedo, actRedo);
+            im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, shortcutMask), actSave);
+            am.put(actSave, actSave);
+        }
 
         // テキストエリアのスクロール、スクロールバーは縦横ともに常に表示しておく.
-        JScrollPane scr = new JScrollPane(area);
+        scr = new JScrollPane(area);
         scr.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
         scr.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
+        scr2 = new JScrollPane(area2);
+        scr2.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scr2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
         Box btnPanel = Box.createHorizontalBox();
 
+        // フォント変更ボタン
         JButton btnFont = new JButton(new AbstractAction(
                 resource.getString("changeFont.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -180,8 +228,15 @@ public class TextInternalFrame extends DocumentInternalFrame {
         btnFont.setToolTipText(resource.getString("changeFont.button.tooltip"));
         btnPanel.add(btnFont);
 
+        // 2分割チェックボックス
+        final JCheckBox chkSplit = new JCheckBox(
+                resource.getString("divider.button.title"));
+        btnPanel.add(chkSplit);
+
+        // パディング
         btnPanel.add(Box.createHorizontalGlue());
 
+        // 平文で保存ボタン
         JButton btnExport = new JButton(new AbstractAction(
                 resource.getString("export.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -194,23 +249,38 @@ public class TextInternalFrame extends DocumentInternalFrame {
         btnExport.setToolTipText(resource.getString("export.button.tooltip"));
         btnPanel.add(btnExport);
 
+        // 保存ボタン
         JButton btnSave = new JButton(actSave);
         btnSave.setToolTipText(resource.getString("save.button.tooltip"));
         btnPanel.add(btnSave);
 
+        // スプリットペイン
+        this.splt = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);
+        splt.setOneTouchExpandable(true);
+        splt.setResizeWeight(0.5); // 半分で分割
+        splt.setLeftComponent(scr); // 初期状態は左ペインのみ設定
+
+        // 2分割チェックボックスのハンドラ
+        chkSplit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (chkSplit.isSelected()) {
+                    // 右ペインを設定
+                    splt.setRightComponent(scr2);
+
+                } else {
+                    // 右ペインを解除
+                    splt.remove(scr2);
+                }
+            }
+        });
+
+        // レイアウト
+
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
-
-        contentPane.add(scr, BorderLayout.CENTER);
+        contentPane.add(splt, BorderLayout.CENTER);
         contentPane.add(btnPanel, BorderLayout.SOUTH);
-
-        this.area.getDocument().addUndoableEditListener(
-                new UndoableEditListener() {
-                    @Override
-                    public void undoableEditHappened(UndoableEditEvent e) {
-                        undoManager.addEdit(e.getEdit());
-                    }
-                });
 
         // READONLYプロパティ変更に対応する
         addPropertyChangeListener(PROPERTY_READONLY,
@@ -218,6 +288,7 @@ public class TextInternalFrame extends DocumentInternalFrame {
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
                         area.setEditable(!isReadonly());
+                        area2.setEditable(!isReadonly());
                     }
                 });
 
@@ -236,12 +307,19 @@ public class TextInternalFrame extends DocumentInternalFrame {
         }
 
         // テキストを設定しなおす.
-        area.setText(text);
+        try {
+            int len = plainDocument.getLength();
+            plainDocument.remove(0, len);
+            plainDocument.insertString(0, text, null);
 
-        // 現在のUndo/Redo情報をクリアする.
-        undoManager.discardAllEdits();
+            // 現在のUndo/Redo情報をクリアする.
+            undoManager.discardAllEdits();
 
-        setModified(false);
+            setModified(false);
+
+        } catch (BadLocationException ex) {
+            UIManager.getLookAndFeel().provideErrorFeedback(this);
+        }
     }
 
     /**
@@ -250,7 +328,13 @@ public class TextInternalFrame extends DocumentInternalFrame {
      * @return
      */
     public String getText() {
-        return area.getText();
+        try {
+            int len = plainDocument.getLength();
+            return plainDocument.getText(0, len);
+
+        } catch (BadLocationException ex) {
+            return "";
+        }
     }
 
     /**
@@ -390,6 +474,7 @@ public class TextInternalFrame extends DocumentInternalFrame {
             // フォントを適用する.
             Font newFont = new Font(selFontName, Font.PLAIN, selFontSize);
             area.setFont(newFont);
+            area2.setFont(newFont);
 
             // 現在のフォント設定を記憶
             appConfig.setFontName(selFontName);

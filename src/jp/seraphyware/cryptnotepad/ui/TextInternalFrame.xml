@@ -4,6 +4,7 @@
   <comment />
   <entry key="changeFont.button.title">Font</entry>
   <entry key="changeFont.button.tooltip">Choose the font</entry>
+  <entry key="divider.button.title">2div</entry>
   <entry key="save.button.title">Save*</entry>
   <entry key="save.button.tooltip">If SHIFT-KEY is pressed, Save as any name.</entry>
   <entry key="export.button.title">Export</entry>
