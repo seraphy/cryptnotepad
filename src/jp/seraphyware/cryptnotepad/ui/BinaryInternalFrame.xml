@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment />
+  <entry key="sourceFile.label.text">Source File</entry>
+  <entry key="workingFile.label.text">Working File</entry>
+  <entry key="status.label.text">Status</entry>
+  <entry key="textField.tooltip">if double-clicked, Copy path of a file to the clipboard.</entry>
+
+  <entry key="load.button.title">Load</entry>
+  <entry key="reload.button.title">Reload</entry>
+  <entry key="open.button.title">Open</entry>
+  <entry key="save.button.title">Save</entry>
+  <entry key="close.button.title">Close</entry>
+</properties>

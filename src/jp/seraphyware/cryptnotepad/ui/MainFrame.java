@@ -471,7 +471,22 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         final PictureInternalFrame internalFrame = new PictureInternalFrame(
                 documentController);
 
-        // テキストとファイル名を設定する.
+        //データとファイル名を設定する.
+        internalFrame.setData(data);
+        internalFrame.setFile(file);
+
+        addInternalFrame(internalFrame);
+
+        return internalFrame;
+    }
+
+    protected BinaryInternalFrame createBinaryInternalFrame(File file,
+            ApplicationData data) {
+        // バイナリ用の子ウィンドウを作成する.
+        final BinaryInternalFrame internalFrame = new BinaryInternalFrame(
+                documentController);
+
+        // データとファイル名を設定する.
         internalFrame.setData(data);
         internalFrame.setFile(file);
 
@@ -625,8 +640,17 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             createTextInternalFrame(file, (String) data);
 
         } else if (data != null && data instanceof ApplicationData) {
-            // バイナリデータの場合(画像)
-            createPictureInternalFrame(file, (ApplicationData) data);
+            // 画像またはバイナリの場合
+            ApplicationData contents = (ApplicationData) data;
+            String contentType = contents.getContentType();
+            if (contentType != null && contentType.startsWith("image/")) {
+                // 画像データの場合
+                createPictureInternalFrame(file, contents);
+                
+            } else {
+                // バイナリデータの場合
+                createBinaryInternalFrame(file, contents);
+            }
         }
     }
 

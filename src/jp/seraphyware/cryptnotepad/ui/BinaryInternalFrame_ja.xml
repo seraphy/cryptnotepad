@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment />
+  <entry key="sourceFile.label.text">暗号化されたファイル</entry>
+  <entry key="workingFile.label.text">作業用のファイル</entry>
+  <entry key="status.label.text">作業用ファイルの状態</entry>
+  <entry key="textField.tooltip">ダブルクリックすると、ファイルのパスをクリップボードにコピーします。</entry>
+
+  <entry key="load.button.title">作業ファイルの作成</entry>
+  <entry key="reload.button.title">作業ファイル再作成</entry>
+  <entry key="open.button.title">作業ファイルを開く</entry>
+  <entry key="save.button.title">作業ファイルを暗号化する</entry>
+  <entry key="close.button.title">作業ファイルを削除する</entry>
+</properties>
