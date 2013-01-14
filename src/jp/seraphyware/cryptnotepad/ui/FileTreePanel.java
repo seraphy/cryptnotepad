@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.logging.Level;
@@ -16,12 +17,22 @@ import java.util.logging.Logger;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.event.EventListenerList;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -31,6 +42,7 @@ import javax.swing.tree.TreeSelectionModel;
 
 import jp.seraphyware.cryptnotepad.Main;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
+import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 
 /**
  * ファイルツリーのパネル
@@ -147,6 +159,19 @@ public class FileTreePanel extends JPanel {
             }
         });
 
+        tree.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    // 右クリック押下で、ノードを選択する.
+                    TreePath tp = tree.getPathForLocation(e.getX(), e.getY());
+                    if (tp != null) {
+                        tree.setSelectionPath(tp);
+                    }
+                }
+            }
+        });
+
         AbstractAction actRefresh = new AbstractAction("Refresh") {
             private static final long serialVersionUID = 1L;
 
@@ -156,10 +181,110 @@ public class FileTreePanel extends JPanel {
             }
         };
 
+        AbstractAction actOpen = new AbstractAction("Open") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onDblClick();
+            }
+        };
+
+        AbstractAction actRename = new AbstractAction("Rename") {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onRename();
+            }
+        };
+
+        // キーボードマップ
+
         ActionMap am = tree.getActionMap();
         InputMap im = tree.getInputMap(JComponent.WHEN_FOCUSED);
         im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), actRefresh);
         am.put(actRefresh, actRefresh);
+
+        // コンテキストメニュー
+
+        JPopupMenu popupMenu = new JPopupMenu();
+        popupMenu.add(new JMenuItem(actRefresh));
+        popupMenu.add(new JSeparator());
+        popupMenu.add(new JMenuItem(actOpen));
+        popupMenu.add(new JMenuItem(actRename));
+
+        tree.setComponentPopupMenu(popupMenu);
+    }
+
+    protected void onRename() {
+        File file = getFocusedFile();
+        if (file == null) {
+            return;
+        }
+
+        SecureRandom rng = new SecureRandom();
+        byte[] data = new byte[8];
+        rng.nextBytes(data);
+
+        StringBuilder buf = new StringBuilder();
+        for (byte d : data) {
+            buf.append(String.format("%02x", d));
+        }
+
+        final JTextField txtNewName = new JTextField();
+        txtNewName.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorRemoved(AncestorEvent event) {
+                // do nothing.
+            }
+
+            @Override
+            public void ancestorMoved(AncestorEvent event) {
+                // do nothing.
+            }
+
+            @Override
+            public void ancestorAdded(AncestorEvent event) {
+                txtNewName.requestFocusInWindow();
+            }
+        });
+
+        JTextField txtOldName = new JTextField();
+        txtOldName.setEditable(false);
+
+        Box pnl = Box.createVerticalBox();
+        pnl.add(new JLabel("Old File Name"));
+        pnl.add(txtOldName);
+        pnl.add(new JLabel("New File Name"));
+        pnl.add(txtNewName);
+
+        txtOldName.setText(file.getName());
+        txtNewName.setText(buf.toString());
+
+        int ret = JOptionPane.showConfirmDialog(this, pnl, "RENAME",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (ret != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String newName = txtNewName.getText().trim();
+
+        if (newName.equals(file.getName())) {
+            // 名前が変更されていない場合
+            return;
+        }
+
+        if (newName.length() > 0) {
+            try {
+                logger.log(Level.INFO, "rename " + file + " => " + newName);
+                file.renameTo(new File(file.getParentFile(), newName));
+                refresh();
+
+            } catch (Exception ex) {
+                ErrorMessageHelper.showErrorDialog(this, ex);
+            }
+        }
     }
 
     /**
