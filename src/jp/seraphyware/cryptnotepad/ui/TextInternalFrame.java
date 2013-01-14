@@ -2,7 +2,6 @@ package jp.seraphyware.cryptnotepad.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridBagConstraints;
@@ -43,6 +42,7 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 import javax.swing.undo.UndoManager;
 
+import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
@@ -301,7 +301,7 @@ public class TextInternalFrame extends DocumentInternalFrame {
      * 
      * @param text
      */
-    public void setText(String text) {
+    private void setText(String text) {
         if (text == null) {
             text = "";
         }
@@ -322,12 +322,22 @@ public class TextInternalFrame extends DocumentInternalFrame {
         }
     }
 
+    @Override
+    public void setData(ApplicationData data) {
+        super.setData(data); // スーパークラスを直接呼び出す
+        String text = null;
+        if (data != null) {
+            text = data.getText();
+        }
+        setText(text);
+    }
+
     /**
      * 編集するテキストを取得する.
      * 
      * @return
      */
-    public String getText() {
+    private String getText() {
         try {
             int len = plainDocument.getLength();
             return plainDocument.getText(0, len);
@@ -337,30 +347,43 @@ public class TextInternalFrame extends DocumentInternalFrame {
         }
     }
 
-    /**
-     * ファイルを上書き保存する.
-     * 
-     * @throws IOException
-     */
     @Override
-    protected void save() throws IOException {
-        File file = getFile();
-        if (file == null) {
-            throw new IllegalStateException("file is null");
-        }
-        String doc = area.getText();
+    public ApplicationData getData() {
+        // テキストの取得
+        String text = getText();
 
-        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-        // ウェイトカーソルにする.
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        try {
-            documentController.encryptText(file, doc);
-
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
+        // ドキュメント名を設定する.
+        // (既存データがあれば、それをもちいる.)
+        String docTitle;
+        ApplicationData data = super.getData();
+        if (data != null) {
+            docTitle = data.getDocumentTitle();
+        } else {
+            // データはないがファイルが指定されていれば、ファイル名が採用される.
+            docTitle = getSuggestDocumentTitle();
         }
 
-        setModified(false);
+        ApplicationData dataNew = createAppData(text, docTitle);
+        super.setData(dataNew); // スーパークラスを直接呼び出す.
+        return super.getData();
+    }
+
+    /**
+     * ファイルを暗号化してテキストを保存する.
+     * 
+     * @param file
+     *            保存先ファイル
+     * @param text
+     *            暗号化するテキスト
+     * @param orgFileName
+     *            オリジナルファイル名、nullの場合は保存先ファイル名を用いる.
+     * @throws IOException
+     *             失敗
+     */
+    private ApplicationData createAppData(String text, String docTitle) {
+        String encoding = documentController.getSettingsModel().getEncoding();
+        String contentType = "text/plain; charset=" + encoding;
+        return new ApplicationData(contentType, text, docTitle);
     }
 
     /**

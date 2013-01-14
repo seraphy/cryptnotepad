@@ -7,6 +7,8 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -48,11 +50,6 @@ public class PictureInternalFrame extends DocumentInternalFrame {
      * ピクチャパネル
      */
     private SamplePicturePanel picturePanel;
-
-    /**
-     * アプリケーションデータ
-     */
-    private ApplicationData data;
 
     /**
      * コンストラクタ
@@ -128,21 +125,14 @@ public class PictureInternalFrame extends DocumentInternalFrame {
         contentPane.add(btnPanel, BorderLayout.SOUTH);
 
         setModified(false);
-    }
 
-    public void setData(ApplicationData data) {
-        ApplicationData oldValue = this.data;
-        this.data = data;
+        addPropertyChangeListener(PROPERTY_DATA, new PropertyChangeListener() {
 
-        loadPicture();
-
-        firePropertyChange("data", oldValue, data);
-
-        setModified(false);
-    }
-
-    public ApplicationData getData() {
-        return data;
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                loadPicture();
+            }
+        });
     }
 
     /**
@@ -151,6 +141,7 @@ public class PictureInternalFrame extends DocumentInternalFrame {
     protected void loadPicture() {
         String message = "";
         BufferedImage img = null;
+        ApplicationData data = getData();
         if (data != null) {
             String contentType = data.getContentType();
             if (contentType.startsWith("image/")) {
@@ -195,18 +186,16 @@ public class PictureInternalFrame extends DocumentInternalFrame {
             throw new IllegalStateException("file is null");
         }
 
+        ApplicationData data = getData();
         if (data == null) {
             return;
         }
-
-        String contentType = data.getContentType();
-        byte[] buf = data.getData();
 
         // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
         // ウェイトカーソルにする.
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         try {
-            documentController.encrypt(file, buf, contentType);
+            documentController.encrypt(file, data);
 
         } finally {
             setCursor(Cursor.getDefaultCursor());
@@ -249,6 +238,7 @@ public class PictureInternalFrame extends DocumentInternalFrame {
     protected void onExport() {
         try {
             File file = showExportDialog();
+            ApplicationData data = getData();
             if (file != null && data != null) {
                 byte[] buf = data.getData();
                 documentController.savePlainBinary(file, buf);

@@ -1,5 +1,6 @@
 package jp.seraphyware.cryptnotepad.ui;
 
+import java.awt.Cursor;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
@@ -23,6 +24,7 @@ import javax.swing.KeyStroke;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
+import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
@@ -39,7 +41,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
 
     public static final String PROPERTY_FILE = "file";
 
-    public static final String PROPERTY_TEMPORARY_TITLE = "temporaryTitle";
+    public static final String PROPERTY_DATA = "data";
 
     public static final String PROPERTY_MODIFIED = "modified";
 
@@ -66,10 +68,9 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
     private File file;
 
     /**
-     * 一時的なタイトル.<br>
-     * (ファイルがnullの場合に用いられる.)<br>
+     * アプリケーションデータ
      */
-    private String temporaryTitle;
+    private ApplicationData data;
 
     /**
      * 変更フラグ
@@ -150,6 +151,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
                 updateReadonlyFlag();
+                updateTitle();
             }
         });
     }
@@ -202,19 +204,22 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
      * また、更新フラグによってマーカーを付与する.<br>
      */
     protected final void updateTitle() {
-        String title = getDocumentTitle();
+        String title = getSuggestDocumentTitle();
 
         String marker = "";
         if (isModified()) {
-            marker = "*";
+            marker += "*"; // 更新済みマーク
         }
-
-        String tailMarker = "";
         if (isReadonly()) {
-            tailMarker = " *READONLY*";
+            marker += "%"; // 読み込み専用マーク
         }
 
-        setTitle(marker + title + tailMarker);
+        String path = "";
+        if (file != null && file.exists()) {
+            path = " (" + file.getPath() + ")";
+        }
+
+        setTitle(marker + title + path);
     }
 
     /**
@@ -223,17 +228,19 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
      * 
      * @return タイトル
      */
-    public final String getDocumentTitle() {
+    public final String getSuggestDocumentTitle() {
         String title;
-        if (file != null) {
+
+        if (data != null) {
+            // データが設定されていれば、ドキュメントタイトルも設定されている.
+            title = data.getDocumentTitle();
+
+        } else if (file != null) {
+            // データはないが、ファイル名が明示されている場合
             title = file.getName();
 
-        } else if (temporaryTitle != null) {
-            // ファイルが未指定だが、一時的なタイトルが指定されている場合
-            title = temporaryTitle;
-
         } else {
-            // ファイルが未指定で一時的なタイトルも設定されていない場合はデフォルト名
+            // ファイルもデータも未指定の場合はデフォルト名
             title = resource.getString("notitled.title");
 
             // 現在日時を付与する.
@@ -268,34 +275,25 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         firePropertyChange(PROPERTY_FILE, oldValue, file);
     }
 
-    public String getTemporaryTitle() {
-        return temporaryTitle;
+    /**
+     * アプリケーションデータを設定する.
+     * 
+     * @param data
+     */
+    public void setData(ApplicationData data) {
+        ApplicationData oldValue = this.data;
+        this.data = data;
+        firePropertyChange(PROPERTY_DATA, oldValue, data);
+        setModified(false);
     }
 
     /**
-     * 一時的なタイトルを設定する.<br>
-     * ファイル名が未指定の場合に用いられる.<br>
-     * その場合、タイトルも変更される.<br>
+     * アプリケーションデータを取得する.
      * 
-     * @param temporaryTitle
+     * @return
      */
-    public void setTemporaryTitle(String temporaryTitle) {
-        if (temporaryTitle != null) {
-            // タイトルはトリムされる.
-            temporaryTitle = temporaryTitle.trim();
-            if (temporaryTitle.length() == 0) {
-                // トリム後、空文字になる場合はnull
-                temporaryTitle = null;
-            }
-        }
-
-        assert temporaryTitle == null || temporaryTitle.trim().length() > 0;
-        String oldValue = this.temporaryTitle;
-        this.temporaryTitle = temporaryTitle;
-
-        updateTitle();
-
-        firePropertyChange(PROPERTY_TEMPORARY_TITLE, oldValue, temporaryTitle);
+    public ApplicationData getData() {
+        return data;
     }
 
     /**
@@ -364,39 +362,82 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
     /**
      * ファイルの保存.<br>
      * 
-     * @param create
-     *            ファイル名が設定されてないものも保存する場合はtrue
+     * @param createOrUpdate
+     *            新規ファイルのみ作成する場合はtrue、
      * @param modifiedOnly
      *            変更されているもののみ保存する場合はtrue
      * @throws IOException
      *             失敗
      */
-    public void requestSave(boolean create, boolean modifiedOnly)
+    public void requestSave(boolean createOrUpdate, boolean modifiedOnly)
             throws IOException {
         if (modifiedOnly && !isModified()) {
             // 変更ファイルのみ保存する場合、変更されてなければ何もしない.
             return;
         }
-        if (isExistFile()) {
-            if (!isReadonly()) {
+
+        if (createOrUpdate) {
+            // 新規保存の場合はファイルが存在しないものだけを保存する.
+            if (!isExistFile()) {
+                saveAs();
+            }
+
+        } else {
+            // 更新保存の場合はファイルが存在するものだけを保存する.
+            // (ただし、読み込み専用の場合は無視する.)
+            if (isExistFile() && !isReadonly()) {
                 // 上書き保存
                 save();
             }
-
-        } else if (create) {
-            // 新規保存を試みる
-            saveAs();
         }
     }
 
     /**
-     * ファイルを保存します.<br>
-     * ファイル名は設定済みでなければなりません.<br>
+     * ファイルにデータを保存する.<br>
+     * ファイル名とデータは設定済みでなければならない.<br>
      * 
      * @throws IOException
      *             失敗
      */
-    protected abstract void save() throws IOException;
+    protected void save() throws IOException {
+        File file = getFile();
+        ApplicationData data = getData();
+
+        // 上書き保存する.
+        save(file, data);
+
+        // 保存済みにマークする.
+        setModified(false);
+    }
+
+    /**
+     * ファイルにデータを保存する.<br>
+     * 
+     * @param file
+     *            保存先ファイル
+     * @param data
+     *            保存するデータ
+     * @throws IOException
+     *             失敗
+     */
+    protected void save(File file, ApplicationData data) throws IOException {
+        if (file == null) {
+            throw new IllegalStateException("file is not specified.");
+        }
+        if (data == null) {
+            throw new IllegalStateException("no-data.");
+        }
+
+        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
+        // ウェイトカーソルにする.
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        try {
+            documentController.encrypt(file, data);
+
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
 
     /**
      * 別名保存します.<br>
@@ -416,7 +457,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         }
         JFileChooser fileChooser = FileChooserEx.createFileChooser(rootDir,
                 true);
-        fileChooser.setDialogTitle(getDocumentTitle());
+        fileChooser.setDialogTitle(getSuggestDocumentTitle());
 
         // デフォルトのファイル名の選択
         if (file != null) {
@@ -425,7 +466,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         } else {
             // ファイル名が指定ないが、一時的なタイトルが設定されていれば
             // タイトルをファイル名に用いる.
-            fileChooser.setSelectedFile(new File(getDocumentTitle()));
+            fileChooser.setSelectedFile(new File(getSuggestDocumentTitle()));
         }
 
         int ret = fileChooser.showSaveDialog(this);
@@ -440,10 +481,17 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         // 新しいファイル名を設定する.
         File oldValue = this.file;
         this.file = file;
-        updateTitle();
 
-        // 実際の保存処理は派生クラスで行う.
-        save();
+        // ドキュメントタイトルを差し替える
+        ApplicationData data = getData();
+        data = data.changeDocumentTitle(file.getName());
+        setData(data);
+
+        // 保存する.
+        save(file, data);
+
+        // 保存済みにする.
+        setModified(false);
 
         // ファイル名変更を通知する.
         firePropertyChange(PROPERTY_FILE, oldValue, file);

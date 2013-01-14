@@ -381,7 +381,7 @@ public class DocumentController implements SymCipherEventListener {
      * @throws IOException
      *             失敗
      */
-    public Object decrypt(File file) throws IOException {
+    public ApplicationData decrypt(File file) throws IOException {
         byte[] data = symCipher.decrypt(file);
         if (data == null) {
             // ファイルが存在しない場合、
@@ -394,36 +394,66 @@ public class DocumentController implements SymCipherEventListener {
         int offset = parseHeader(data, headers);
         logger.log(Level.FINE, "headers=" + headers);
 
+        // データ長さ
         int length = Integer.parseInt(headers.get("content-length"));
 
+        // オリジナルファイル名
+        String orgFileName = null;
+        String contentDisposition = headers.get("content-disposition");
+        if (contentDisposition != null && contentDisposition.length() > 0) {
+            Map<String, String> argMap = parseOptions(contentDisposition);
+            logger.log(Level.INFO, "contentDisposition(args)=" + argMap);
+
+            orgFileName = argMap.get("filename");
+        }
+        if (orgFileName == null || orgFileName.trim().length() == 0) {
+            // オリジナルファイル名が未設定であれば実ファイル名から補完する.
+            orgFileName = file.getName();
+        }
+
+        // コンテントタイプ
         String contentType = headers.get("content-type");
+        if (contentType == null || contentType.trim().length() == 0) {
+            logger.log(Level.WARNING, "contentType is missing.");
+            contentType = "application/unknown";
+        }
 
         // 文字列データの場合
-        if (contentType.startsWith("text/")) {
-            // 文字コードの取得
-            String encoding = null;
-            int pt = contentType.indexOf(';');
-            if (pt > 0) {
-                String args = contentType.substring(pt + 1);
-                Map<String, String> argMap = new HashMap<String, String>();
-                parseKeyValue(args, '=', argMap);
-                logger.log(Level.FINE, "contentType(args)=" + headers);
-
-                encoding = argMap.get("charset");
-            }
-
-            if (encoding == null || encoding.trim().length() == 0) {
-                // 未指定の場合は現在のエンコーディング指定を使用する.
-                encoding = settingsModel.getEncoding();
-            }
-
-            return new String(data, offset, length, encoding);
+        String textEncoding = getTextEncoding(contentType);
+        if (textEncoding != null) {
+            String text = new String(data, offset, length, textEncoding);
+            return new ApplicationData(contentType, text, orgFileName);
         }
 
         // 画像データの場合か、それ以外の場合
         byte[] buf = new byte[length];
         System.arraycopy(data, offset, buf, 0, length);
-        return new ApplicationData(contentType, buf);
+        return new ApplicationData(contentType, buf, orgFileName);
+    }
+
+    /**
+     * コンテントタイプから文字コード指定を取り出す.<br>
+     * 文字コードの指定がない場合は現在の設定値をデフォルトとして採用する.<br>
+     * コンテントタイプがテキストでない場合はnullを返す.<br>
+     * 
+     * @param contentType
+     *            コンテントタイプ
+     * @return 文字コード、もしくはnull
+     */
+    protected String getTextEncoding(String contentType) {
+        if (contentType != null && contentType.startsWith("text/")) {
+            // 文字コードの取得
+            Map<String, String> argMap = parseOptions(contentType);
+            logger.log(Level.INFO, "contentType(args)=" + argMap);
+            String encoding = argMap.get("charset");
+
+            if (encoding == null || encoding.trim().length() == 0) {
+                // 未指定の場合は現在のエンコーディング指定を使用する.
+                encoding = settingsModel.getEncoding();
+            }
+            return encoding;
+        }
+        return null;
     }
 
     /**
@@ -520,6 +550,28 @@ public class DocumentController implements SymCipherEventListener {
     }
 
     /**
+     * セミコロン区切りの「key=value」形式の文字列を分解してマップに格納します.<br>
+     * (最初のセミコロンまでは無視されます.)<br>
+     * 
+     * @param line
+     *            オプションを含む文字列
+     * @return オプションの解析結果を格納するマップ
+     */
+    protected Map<String, String> parseOptions(String line) {
+        Map<String, String> argsMap = new HashMap<String, String>();
+        if (line != null && line.length() > 0) {
+            int pt = line.indexOf(';');
+            if (pt > 0) {
+                String args = line.substring(pt + 1).trim();
+                for (String arg : args.split(";")) {
+                    parseKeyValue(arg, '=', argsMap);
+                }
+            }
+        }
+        return argsMap;
+    }
+
+    /**
      * 「key:value」形式をキーと値に分解してマップに追加する. キーは小文字にそろえられる.
      * 
      * @param line
@@ -545,37 +597,6 @@ public class DocumentController implements SymCipherEventListener {
             map.put(name, value);
         } else {
             map.put(line, "");
-        }
-    }
-
-    /**
-     * ファイルを暗号化してテキストを保存する.
-     * 
-     * @param file
-     *            保存先ファイル
-     * @param text
-     *            暗号化するテキスト
-     * @throws IOException
-     *             失敗
-     */
-    public void encryptText(File file, String text) throws IOException {
-        if (file == null) {
-            throw new IllegalArgumentException();
-        }
-
-        FileUpdateNotifier notifier = new FileUpdateNotifier(file);
-        try {
-            if (text == null) {
-                text = "";
-            }
-
-            String encoding = settingsModel.getEncoding();
-            byte[] data = text.getBytes(encoding);
-
-            encrypt(file, data, "text/plain; charset=" + encoding);
-
-        } finally {
-            notifier.checkAndNotify();
         }
     }
 
@@ -617,32 +638,75 @@ public class DocumentController implements SymCipherEventListener {
     }
 
     /**
-     * MIMEを指定してデータを暗号化して保存する.
+     * アプリケーションデータを暗号化して保存する.
+     * @param file 保存先ファイル名
+     * @param data 保存するデータ
+     * @throws IOException 失敗
+     */
+    public void encrypt(File file, ApplicationData data) throws IOException {
+        if (file == null || data == null) {
+            throw new IllegalArgumentException();
+        }
+
+        String contentType = data.getContentType();
+        String docTitle = data.getDocumentTitle();
+
+        String textEncoding = getTextEncoding(contentType);
+        byte[] bytes;
+        if (textEncoding != null) {
+            bytes = data.getText().getBytes(textEncoding);
+        } else {
+            bytes = data.getData();
+        }
+
+        encrypt(file, bytes, contentType, docTitle);
+    }
+
+    /**
+     * MIMEを指定してバイナリデータを暗号化して保存する.
      * 
      * @param file
      *            保存先ファイル名
      * @param data
      *            データ
-     * @param mime
+     * @param contentType
      *            データの形式を表すMIMEタイプ
+     * @param orgFileName
+     *            オリジナルファイル名、nullの場合は保存先ファイル名を用いる.
      * @throws IOException
      *             失敗
      */
-    public void encrypt(File file, byte[] data, String mime) throws IOException {
-        if (file == null || mime == null || mime.length() == 0) {
-            throw new IllegalArgumentException();
-        }
-
+    private void encrypt(File file, byte[] data, String contentType,
+            String orgFileName) throws IOException {
         if (data == null) {
             data = new byte[0];
+        }
+
+        String dpType;
+        if (contentType.startsWith("text/") || contentType.startsWith("image/")) {
+            dpType = "inline";
+        } else {
+            dpType = "attachment";
+        }
+
+        String displayName;
+        if (orgFileName == null || orgFileName.trim().length() == 0) {
+            displayName = file.getName();
+        } else {
+            displayName = orgFileName;
         }
 
         byte[] buf;
         {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             try {
-                bos.write(("Content-Type: " + mime + "\r\n").getBytes("UTF-8"));
+                bos.write(("Content-Type: " + contentType + "\r\n")
+                        .getBytes("UTF-8"));
                 bos.write(("Content-Length: " + data.length + "\r\n")
+                        .getBytes("UTF-8"));
+                bos.write(("Content-Disposition: " + dpType + ";filename="
+                        + displayName + "\r\n").getBytes("UTF-8"));
+                bos.write(("Content-Transfer-Encoding: binary\r\n")
                         .getBytes("UTF-8"));
                 bos.write("\r\n".getBytes("UTF-8"));
                 bos.write(data);

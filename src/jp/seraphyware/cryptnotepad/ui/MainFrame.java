@@ -440,7 +440,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      *            暗号されたファイル
      * @return 復号化されたデータ、もしくはnull
      */
-    protected Object loadEncrypted(File file) {
+    protected ApplicationData loadEncrypted(File file) {
         if (file != null) {
             try {
                 // ファイルをロードする.
@@ -467,18 +467,19 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      * 
      * @param file
      *            対象ファイル、nullの場合は新規ドキュメントを開く.
-     * @param doc
+     * @param data
      *            テキスト
      * 
      * @return 生成された子ウィンドウ、生成できなければnull
      */
-    protected TextInternalFrame createTextInternalFrame(File file, String doc) {
+    protected TextInternalFrame createTextInternalFrame(File file,
+            ApplicationData data) {
         // テキスト編集用の子ウィンドウを作成する.
         final TextInternalFrame internalFrame = new TextInternalFrame(
                 documentController);
 
         // テキストとファイル名を設定する.
-        internalFrame.setText(doc);
+        internalFrame.setData(data);
         internalFrame.setFile(file);
 
         addInternalFrame(internalFrame);
@@ -703,23 +704,25 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
 
         // まだファイルが開かれていなければ開く.
-        Object data = loadEncrypted(file);
-        if (data != null && data instanceof String) {
+        ApplicationData data = loadEncrypted(file);
+        if (data == null) {
+            // データを開けない
+            return;
+        }
+
+        // コンテントタイプによって子フレームのタイプを分ける.
+        String contentType = data.getContentType();
+        if (contentType.startsWith("text/")) {
             // テキストデータの場合
-            createTextInternalFrame(file, (String) data);
+            createTextInternalFrame(file, data);
 
-        } else if (data != null && data instanceof ApplicationData) {
-            // 画像またはバイナリの場合
-            ApplicationData contents = (ApplicationData) data;
-            String contentType = contents.getContentType();
-            if (contentType != null && contentType.startsWith("image/")) {
-                // 画像データの場合
-                createPictureInternalFrame(file, contents);
+        } else if (contentType.startsWith("image/")) {
+            // 画像データの場合
+            createPictureInternalFrame(file, data);
 
-            } else {
-                // バイナリデータの場合
-                createBinaryInternalFrame(file, contents);
-            }
+        } else {
+            // バイナリデータの場合
+            createBinaryInternalFrame(file, data);
         }
     }
 
@@ -773,6 +776,11 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             }
         }
 
+        // オリジナルファイル名
+        String docTitle = file.getName();
+        DocumentInternalFrame internalFrame;
+        ApplicationData data;
+
         if (!contentType.startsWith("text/")) {
             // テキスト以外(画像とバイナリ)の場合はバイナリとして読み込む
             byte[] buf;
@@ -789,9 +797,8 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             }
 
             // バイナリデータの構築
-            ApplicationData data = new ApplicationData(contentType, buf);
+            data = new ApplicationData(contentType, buf, docTitle);
 
-            DocumentInternalFrame internalFrame;
             if (contentType.startsWith("image/")) {
                 // 新規に画像ドキュメントを開く.
                 internalFrame = createPictureInternalFrame(null, data);
@@ -801,11 +808,6 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
                 internalFrame = createBinaryInternalFrame(null, data);
             }
 
-            // 読み込んだファイルの内容とファイル名を設定する.
-            // (未保存のドキュメントとして扱われる)
-            internalFrame.setTemporaryTitle(file.getName());
-            internalFrame.setModified(true); // 編集中としてマークする.
-
         } else {
             // テキストの場合は、読み込み文字コードを選択する.
             String encoding = chooseCharset();
@@ -814,23 +816,24 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             }
 
             // 平文ファイルを読み込む
-            String doc;
+            String text;
             try {
-                doc = documentController.loadText(file, encoding);
+                text = documentController.loadText(file, encoding);
 
             } catch (Exception ex) {
                 ErrorMessageHelper.showErrorDialog(this, ex);
                 return;
             }
 
-            // 新規にテキストドキュメントを開く.
-            TextInternalFrame internalFrame = createTextInternalFrame(null, doc);
+            // テキストデータの構築
+            data = new ApplicationData(contentType, text, docTitle);
 
-            // 読み込んだファイルの内容とファイル名を設定する.
-            // (未保存のドキュメントとして扱われる)
-            internalFrame.setTemporaryTitle(file.getName());
-            internalFrame.setModified(true); // 編集中としてマークする.
+            // 新規にテキストドキュメントを開く.
+            internalFrame = createTextInternalFrame(null, data);
         }
+
+        // 編集中(未保存)としてマークする.
+        internalFrame.setModified(true);
     }
 
     /**

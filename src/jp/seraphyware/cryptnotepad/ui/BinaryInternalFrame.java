@@ -3,7 +3,6 @@ package jp.seraphyware.cryptnotepad.ui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -50,8 +49,6 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
     public static final String PROPERTY_WORKINGFILE = "workingFile";
 
-    public static final String PROPERTY_DATA = "data";
-
     /**
      * ワーキングファイルの更新チェック間隔.(mSec)
      */
@@ -67,11 +64,6 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
      * リソースバンドル
      */
     private ResourceBundle resource;
-
-    /**
-     * アプリケーションデータ
-     */
-    private ApplicationData data;
 
     /**
      * 暗号化ファイルをワークに平文でロードする.
@@ -750,17 +742,6 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
                 || (workingFileSize != size);
     }
 
-    public void setData(ApplicationData data) {
-        ApplicationData oldValue = this.data;
-        this.data = data;
-        firePropertyChange(PROPERTY_DATA, oldValue, data);
-        setModified(false);
-    }
-
-    public ApplicationData getData() {
-        return data;
-    }
-
     /**
      * ワークファイルを削除する.
      * 
@@ -787,6 +768,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         if (workingFile == null) {
             throw new IllegalStateException("working file is not specified.");
         }
+        ApplicationData data = getData();
         if (data == null) {
             throw new IllegalStateException("no-data");
         }
@@ -800,41 +782,27 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         } else {
             // ワークファイルの内容を暗号化ファイルに格納
             String contentType = data.getContentType();
+            String documentTitld = data.getDocumentTitle();
 
             // プロパティの更新
             this.workingFileLastModified = workingFile.lastModified();
             this.workingFileSize = workingFile.length();
-            setData(new ApplicationData(contentType, contents));
+            setData(new ApplicationData(contentType, contents, documentTitld));
         }
     }
 
-    /**
-     * ファイルの上書き保存.
-     */
     @Override
     protected void save() throws IOException {
-        File file = getFile();
-        if (file == null) {
-            throw new IllegalStateException("file is not specified.");
-        }
-        if (data == null) {
-            throw new IllegalStateException("no-data.");
-        }
+        super.save();
+        // ワーキングファイルが存在すれば保存後でも変更ありにマークしておく.
+        setModified(workingFile != null && workingFile.exists());
+    }
 
-        // ワークファイルの内容を暗号化ファイルに格納
-        String contentType = data.getContentType();
-        byte[] contents = data.getData();
-
-        // 外部ファイルのソルトの再計算が必要な場合には保存に時間がかかるため
-        // ウェイトカーソルにする.
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        try {
-            documentController.encrypt(file, contents, contentType);
-
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
-        }
-        setModified(false);
+    @Override
+    protected void saveAs() throws IOException {
+        super.saveAs();
+        // ワーキングファイルが存在すれば保存後でも変更ありにマークしておく.
+        setModified(workingFile != null && workingFile.exists());
     }
 
     /**
@@ -846,25 +814,26 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         if (workingFile != null) {
             throw new IllegalStateException("working file is already exists.");
         }
+        ApplicationData data = getData();
+        if (data == null) {
+            throw new IllegalStateException("nodata");
+        }
 
         // 出力する一時ファイル名を選定する.
-        String workingFileName;
-        File file = getFile();
-        if (file != null) {
-            // ファイル名があれば、それを用いる.
-            workingFileName = file.getName();
-        } else {
-            // 一時タイトルがあれば、それを用いる.
-            workingFileName = getTemporaryTitle();
-        }
+        String workingFileName = data.getDocumentTitle();
         if (workingFileName != null && workingFileName.length() > 0) {
             // ファイル名のうち最終パスだけを採用する.
             workingFileName = new File(workingFileName).getName();
         }
 
+        // 作業用ディレクトリの実在を確認する.
+        File workDir = appConfig.getWorkingDir();
+        if (workDir == null || !workDir.isDirectory()) {
+            throw new IOException("working directoy not found. " + workDir);
+        }
+
         // 一時ファイル名を決定する.
         File workingFile;
-        File workDir = appConfig.getWorkingDir();
         if (workingFileName == null || workingFileName.trim().length() == 0) {
             // 一時ファイル名を自動で設定
             workingFile = File.createTempFile("crynote", ".tmp", workDir);
