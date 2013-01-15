@@ -186,17 +186,28 @@ public class Main implements Runnable {
         // JSpliderのvalueを非表示 (GTKではデフォルトで有効のため)
         UIManager.put("Slider.paintValue", Boolean.FALSE);
 
-        // JTextAreaの既定フォントを固定幅から、標準テキストと同じフォントに変更.
-        // (Linuxなどで固定幅フォントでは日本語フォントを持っていないため。)
-        Object textFieldFontUI = UIManager.get("TextField.font");
-        if (textFieldFontUI == null) {
-            // もし無ければダイアログUIフォントを使う.(これは日本語をサポートするであろう。)
-            textFieldFontUI = new UIDefaults.ProxyLazyValue(
+        // デフォルトのフォントを設定.
+        // (Linuxなどで固定幅フォントでは日本語フォントを持っていないためdialogフォント等を使うとよい.)
+        String fontName = appConfig.getDefaultFontName();
+        int fontSize = appConfig.getDefaultFontSize();
+        if (fontName != null && fontName.trim().length() > 0 && fontSize > 0) {
+            Object font = new UIDefaults.ProxyLazyValue(
                     "javax.swing.plaf.FontUIResource", null, new Object[] {
-                            "dialog", Integer.valueOf(Font.PLAIN),
-                            Integer.valueOf(12) });
+                            fontName, Integer.valueOf(Font.PLAIN),
+                            Integer.valueOf(fontSize) });
+
+            Enumeration<?> keys = UIManager.getDefaults().keys();
+            while (keys.hasMoreElements()) {
+                Object rawKey = keys.nextElement();
+                if (rawKey instanceof String) {
+                    String key = (String) rawKey;
+                    if (key.endsWith(".font")) {
+                        logger.log(Level.FINE, "UIDefault: " + key + "=" + font);
+                        UIManager.put(key, font);
+                    }
+                }
+            }
         }
-        UIManager.put("TextArea.font", textFieldFontUI);
     }
 
     /**
@@ -205,6 +216,15 @@ public class Main implements Runnable {
      */
     public void run() {
         try {
+            // アプリケーション設定の初期化
+            appConfig = ApplicationSettings.getInstance();
+
+            // ドキュメントコンストローラの設定
+            documentController = new DocumentController();
+
+            // アプリケーション設定のロード
+            initAppConfig();
+
             // UIManagerのセットアップ.
             try {
                 setupUIManager();
@@ -214,16 +234,6 @@ public class Main implements Runnable {
                 ex.printStackTrace();
                 logger.log(Level.WARNING, "UIManager setup failed.", ex);
             }
-
-            // アプリケーション設定の初期化
-            appConfig = ApplicationSettings.getInstance();
-
-            // ドキュメントコンストローラの設定
-            documentController = new DocumentController();
-
-            // アプリケーション設定のロード
-            initAppConfig();
-            ApplicationSettings appConfig = ApplicationSettings.getInstance();
 
             // MainFrameの表示
             mainFrame = new MainFrame(documentController);

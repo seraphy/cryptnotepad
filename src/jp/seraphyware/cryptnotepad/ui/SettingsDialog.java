@@ -148,8 +148,9 @@ public class SettingsDialog extends JDialog {
         GridBagLayout gbl = new GridBagLayout();
         pnlFileSettings.setLayout(gbl);
         pnlFileSettings.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(3, 3, 3, 3),
-                BorderFactory.createTitledBorder("File Settings")));
+                BorderFactory.createEmptyBorder(3, 3, 3, 3), BorderFactory
+                        .createTitledBorder(resource
+                                .getString("titledborder.filesettings.text"))));
 
         gbc.gridheight = 1;
         gbc.gridwidth = 1;
@@ -212,8 +213,9 @@ public class SettingsDialog extends JDialog {
         JPanel pnlDirSettings = new JPanel();
         pnlDirSettings.setLayout(new GridBagLayout());
         pnlDirSettings.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(3, 3, 3, 3),
-                BorderFactory.createTitledBorder("Directory Settings")));
+                BorderFactory.createEmptyBorder(3, 3, 3, 3), BorderFactory
+                        .createTitledBorder(resource
+                                .getString("titledborder.dirsettings.text"))));
 
         gbc.gridheight = 1;
         gbc.gridwidth = 1;

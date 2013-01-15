@@ -59,8 +59,7 @@ public final class ApplicationSettings implements Serializable {
 
     /**
      * 作業ディレクトリ.<br>
-     * この項目はシステムデフォルトと同じ場合はnullとして保存し、
-     * 次回起動時にシステムデフォルトを再設定します.<br>
+     * この項目はシステムデフォルトと同じ場合はnullとして保存し、 次回起動時にシステムデフォルトを再設定します.<br>
      */
     private File workingDir;
 
@@ -93,6 +92,16 @@ public final class ApplicationSettings implements Serializable {
      * フォントサイズ
      */
     private int fontSize;
+
+    /**
+     * 標準フォントサイズ
+     */
+    private int defaultFontSize = 12;
+
+    /**
+     * デフォルトのフォント名.
+     */
+    private String defaultFontName = "dialog";
 
     /**
      * テキストと判定する拡張子.(text/*)
@@ -239,6 +248,28 @@ public final class ApplicationSettings implements Serializable {
         propChange.firePropertyChange("fontSize", oldValue, fontSize);
     }
 
+    public int getDefaultFontSize() {
+        return defaultFontSize;
+    }
+
+    public void setDefaultFontSize(int defaultFontSize) {
+        int oldValue = this.defaultFontSize;
+        this.defaultFontSize = defaultFontSize;
+        propChange.firePropertyChange("defaultFontSize", oldValue,
+                defaultFontSize);
+    }
+
+    public String getDefaultFontName() {
+        return defaultFontName;
+    }
+
+    public void setDefaultFontName(String defaultFontName) {
+        String oldValue = this.defaultFontName;
+        this.defaultFontName = defaultFontName;
+        propChange.firePropertyChange("defaultFontName", oldValue,
+                defaultFontName);
+    }
+
     public String getExtensionsForText() {
         return extensionsForText;
     }
@@ -310,6 +341,9 @@ public final class ApplicationSettings implements Serializable {
         props.setProperty("fontName", toSafeString(fontName));
         props.setProperty("fontSize", Integer.toString(fontSize));
 
+        props.setProperty("defaultFontName", toSafeString(defaultFontName));
+        props.setProperty("defaultFontSize", Integer.toString(defaultFontSize));
+
         props.setProperty("encoding", toSafeString(encoding));
         props.setProperty("keyFile", toSafeString(keyFile));
 
@@ -363,6 +397,11 @@ public final class ApplicationSettings implements Serializable {
 
         fontName = props.getProperty("fontName");
         fontSize = parseInt(props.getProperty("fontSize"), fontSize);
+
+        defaultFontName = chooseString(props.getProperty("defaultFontName"),
+                defaultFontName);
+        defaultFontSize = parseInt(props.getProperty("defaultFontSize"),
+                defaultFontSize);
 
         encoding = props.getProperty("encoding");
         keyFile = props.getProperty("keyFile");
