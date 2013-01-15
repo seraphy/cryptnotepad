@@ -31,19 +31,23 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.InputMap;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDesktopPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JInternalFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JRootPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.event.AncestorEvent;
@@ -390,16 +394,35 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
     }
 
     /**
+     * エラー時にパスフレーズを自動クリアするか？
+     */
+    private boolean clearPassphraseWhenError = true;
+
+    /**
      * ドキュメントがセキュリティ上の理由が開けなかった場合
      */
     @Override
     public boolean securityError(File file, Throwable casue) {
-        String message = resource.getString("error.documentSecurityError");
+        Box pnl = Box.createVerticalBox();
+        pnl.add(new JLabel(resource.getString("error.documentSecurityError")));
         if (file != null) {
-            message += "\r\n" + file.getAbsolutePath();
+            JTextField txtFile = new JTextField(file.getAbsolutePath());
+            txtFile.setEditable(false);
+            pnl.add(txtFile);
         }
-        JOptionPane.showMessageDialog(this, message, "ERROR",
+        JCheckBox chkClear = new JCheckBox(
+                resource.getString("clearPassphraseWhenError.checkbox.title"));
+        chkClear.setSelected(clearPassphraseWhenError);
+        pnl.add(chkClear);
+
+        JOptionPane.showMessageDialog(this, pnl, "ERROR",
                 JOptionPane.ERROR_MESSAGE);
+
+        // パスフレーズが誤りである可能性が高いためリセットしておく.
+        clearPassphraseWhenError = chkClear.isSelected();
+        if (clearPassphraseWhenError) {
+            documentController.getSettingsModel().setPassphrase(null);
+        }
         return true;
     }
 

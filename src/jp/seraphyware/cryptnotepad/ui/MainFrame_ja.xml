@@ -25,4 +25,5 @@
   <entry key="selectContentType.dialog.title">Content-Typeの選択</entry>
 
   <entry key="error.documentSecurityError">パスフレーズが一致しないかファイルが破損しています。</entry>
+  <entry key="clearPassphraseWhenError.checkbox.title">パスフレーズをクリアする.</entry>
 </properties>

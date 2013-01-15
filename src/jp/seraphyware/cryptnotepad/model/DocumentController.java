@@ -207,9 +207,6 @@ public class DocumentController implements SymCipherEventListener {
                 // 呼び出し元で例外をスローする必要はないのでキャンセルする.
                 e.setCancel(true);
             }
-
-            // パスフレーズが誤りである可能性が高いためリセットしておく.
-            settingsModel.setPassphrase(null);
         }
     }
 
