@@ -30,6 +30,7 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.WindowConstants;
 
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.SettingsModel;
@@ -115,7 +116,7 @@ public class SettingsDialog extends JDialog {
      */
     private void init() {
         // ウィンドウの閉じるボタン処理
-        setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {

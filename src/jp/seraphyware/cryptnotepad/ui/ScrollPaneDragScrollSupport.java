@@ -327,10 +327,12 @@ public class ScrollPaneDragScrollSupport {
         }
         if (mouseMotionListener == null) {
             mouseMotionListener = new MouseMotionListener() {
+                @Override
                 public void mouseMoved(MouseEvent e) {
                     // 何もしない.
                 }
 
+                @Override
                 public void mouseDragged(MouseEvent e) {
                     Point pt = SwingUtilities.convertPoint(comp, e.getPoint(),
                             scrollPane);
@@ -343,6 +345,7 @@ public class ScrollPaneDragScrollSupport {
 
         if (mouseWheelListener == null) {
             mouseWheelListener = new MouseWheelListener() {
+                @Override
                 public void mouseWheelMoved(MouseWheelEvent e) {
                     scrollByWheel(e);
                     e.consume();

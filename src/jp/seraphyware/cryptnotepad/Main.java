@@ -1,6 +1,7 @@
 package jp.seraphyware.cryptnotepad;
 
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -214,6 +215,7 @@ public class Main implements Runnable {
      * 初期処理およびメインフレームを構築する.<br>
      * SwingのUIスレッドで実行される.<br>
      */
+    @Override
     public void run() {
         try {
             // アプリケーション設定の初期化
@@ -266,7 +268,7 @@ public class Main implements Runnable {
      */
     protected void onCloseMainFrame(MainFrame mainFrame) {
         // ウィンドウサイズの保存
-        if (mainFrame.getExtendedState() == JFrame.NORMAL) {
+        if (mainFrame.getExtendedState() == Frame.NORMAL) {
             int width = mainFrame.getWidth();
             int height = mainFrame.getHeight();
             if (width > 100 && height > 100) {

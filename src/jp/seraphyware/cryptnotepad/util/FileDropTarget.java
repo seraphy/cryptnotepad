@@ -31,6 +31,7 @@ public abstract class FileDropTarget extends DropTargetAdapter {
     /**
      * ドロップハンドラ
      */
+    @Override
     public void drop(DropTargetDropEvent dtde) {
         try {
             // urlListFlavor (RFC 2483 for the text/uri-list format)

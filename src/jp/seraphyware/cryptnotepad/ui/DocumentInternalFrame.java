@@ -21,6 +21,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JInternalFrame;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.WindowConstants;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
@@ -100,7 +101,7 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
         }
 
         // 閉じるイベントのハンドリング
-        setDefaultCloseOperation(JInternalFrame.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addInternalFrameListener(new InternalFrameAdapter() {
             @Override
             public void internalFrameClosing(InternalFrameEvent e) {

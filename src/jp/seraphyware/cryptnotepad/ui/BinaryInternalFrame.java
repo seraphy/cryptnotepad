@@ -180,6 +180,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             setModified(false);
         }
 
+        @Override
         public String toString() {
             return "processNoData";
         }
@@ -216,6 +217,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             setModified(false);
         }
 
+        @Override
         public String toString() {
             return "processNoMounted";
         }
@@ -252,6 +254,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             setModified(false);
         }
 
+        @Override
         public String toString() {
             return "processNoOpened";
         }
@@ -296,6 +299,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             setModified(true);
         }
 
+        @Override
         public String toString() {
             return "processNoModified";
         }
@@ -345,6 +349,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
             setModified(true);
         }
 
+        @Override
         public String toString() {
             return "processModified";
         }

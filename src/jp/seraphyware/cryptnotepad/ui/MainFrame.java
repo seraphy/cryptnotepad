@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.Frame;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -50,6 +51,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
 
@@ -165,7 +167,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      */
     private void init() {
         // ウィンドウの閉じるイベント
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -314,6 +316,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
                 // ドロップソースの処理がブロッキングしないように、
                 // ドロップハンドラの処理を終了してからインポートダイアログが開くようにする.
                 SwingUtilities.invokeLater(new Runnable() {
+                    @Override
                     public void run() {
                         for (File dropFile : dropFiles) {
                             if (dropFile.isFile()) {
@@ -567,7 +570,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
         // ファイル名が変更されたら通知を受け取るようにリスナを設定する.
         internalFrame.addPropertyChangeListener(
-                TextInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
+                DocumentInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
                         // ドキュメントのファイル名が変更された場合
@@ -1059,7 +1062,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             @Override
             public void run() {
                 // 最小化する.
-                setState(JFrame.ICONIFIED);
+                setState(Frame.ICONIFIED);
             }
         });
     }

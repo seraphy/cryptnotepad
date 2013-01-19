@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
 
 /**
  * 例外を表示するダイアログ.<br>
@@ -61,8 +62,8 @@ public abstract class ErrorMessageHelper {
 
             JScrollPane scr = new JScrollPane(textArea);
             scr.setPreferredSize(new Dimension(400, 150));
-            scr.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-            scr.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+            scr.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
+            scr.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 
             // ダイアログの表示
             JOptionPane.showMessageDialog(parent, scr, "ERROR",

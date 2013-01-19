@@ -34,6 +34,7 @@ public class AWTExceptionLoggingHandler {
 
         // エラーダイアログを表示する.(非同期)
         SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 JFrame currentFrame = Main.getMainFrame();
                 if (currentFrame == null || !currentFrame.isDisplayable()

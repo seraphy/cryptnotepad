@@ -25,6 +25,7 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
+import javax.swing.ScrollPaneConstants;
 
 import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
@@ -118,8 +119,8 @@ public class PictureInternalFrame extends DocumentInternalFrame {
         contentPane.setLayout(new BorderLayout());
 
         JScrollPane scr = new JScrollPane(picturePanel);
-        scr.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-        scr.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        scr.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
+        scr.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 
         contentPane.add(scr, BorderLayout.CENTER);
         contentPane.add(btnPanel, BorderLayout.SOUTH);
