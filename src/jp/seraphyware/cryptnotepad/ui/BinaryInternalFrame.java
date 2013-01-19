@@ -571,10 +571,12 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         timer = new Timer(TIMER_DELAY, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                updateState();
+                logger.log(Level.FINEST, "Timer Event. " + e);
+                updateProcessState();
             }
         });
         timer.start();
+        logger.log(Level.FINEST, "Start Timer. " + timer);
     }
 
     /**
@@ -626,17 +628,28 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
         // タイマーの停止
         timer.stop();
+        logger.log(Level.FINEST, "Stop Timer. " + timer);
 
+        // 閉じる処理続行
         super.onClosing();
     }
 
+    /**
+     * 現在のプロセスを設定する.
+     * 
+     * @param currentProcess
+     */
     public void setCurrentProcess(Process currentProcess) {
-        logger.log(Level.INFO, "currentProcess=" + currentProcess);
         Process oldValue = this.currentProcess;
         this.currentProcess = currentProcess;
         firePropertyChange(PROPERTY_CURRENTPROCESS, oldValue, currentProcess);
     }
 
+    /**
+     * 現在のプロセスを取得する.
+     * 
+     * @return
+     */
     public Process getCurrentProcess() {
         return currentProcess;
     }
@@ -657,6 +670,7 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
         if (PROPERTY_CURRENTPROCESS.equals(name)) {
             // カレントプロセスモードが変更された場合は画面の状態を更新する.
+            logger.log(Level.INFO, "currentProcess=" + getCurrentProcess());
             currentProcess.updateUI();
             return;
         }
@@ -677,13 +691,13 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
         // ファイルやワークファイル等の状態変更があった場合は、
         // プロセスモードの更新をチェックする.
-        updateState();
+        updateProcessState();
     }
 
     /**
      * データ、ファイル、ワークファイルの状態をもとに、 現在のプロセスモードを更新する.<br>
      */
-    protected void updateState() {
+    protected void updateProcessState() {
         File file = getFile();
         ApplicationData data = getData();
 
