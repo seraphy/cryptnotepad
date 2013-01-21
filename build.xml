@@ -26,7 +26,7 @@
 		</javac>
 		<copy todir="work">
 			<fileset dir="src">
-				<exclude name="**/*.java" />
+				<!-- <exclude name="**/*.java" /> ※ パッケージにはソースファイルを含む -->
 			</fileset>
 		</copy>
 		<jar basedir="work" destfile="${outputJar}" index="true" manifest="src/META-INF/MANIFEST.MF">
