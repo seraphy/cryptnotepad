@@ -6,6 +6,7 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -610,7 +611,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
 
         JButton btnSettings = new JButton(actSettings);
 
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JPanel btnPanel = new JPanel(new GridLayout(1, 3));
         JButton btnNew = new JButton(actNew);
         btnNew.setToolTipText(resource.getString("new.button.tooltip"));
 
