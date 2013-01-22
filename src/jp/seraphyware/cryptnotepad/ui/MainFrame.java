@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Cursor;
-import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
@@ -210,8 +209,15 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                // 新規ドキュメントを開く
-                onNew();
+                // 「開く」ボタンを押された場合
+                if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    // シフトキーとともにある場合は任意ファイルを開く.
+                    onOpenAny();
+
+                } else {
+                    // 通常の場合は、新規テキストドキュメントを開く
+                    onNew();
+                }
             }
         };
 
@@ -239,12 +245,12 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             public void actionPerformed(ActionEvent e) {
                 // 「開く」ボタンを押された場合
                 if ((e.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
-                    // シフトキーとともにある場合は任意ファイルを開く.
-                    onOpenAny();
+                    // シフトキーとともにある場合はバイナリファイルとして開く
+                    onOpenFile(fileTreePanel.getFocusedFile(), true);
 
                 } else {
                     // 通常の場合はフォーカスされたアイテムをオープンする.
-                    onOpenFile(fileTreePanel.getFocusedFile());
+                    onOpenFile(fileTreePanel.getFocusedFile(), false);
                 }
             }
         };
@@ -253,7 +259,7 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             @Override
             public void actionPerformed(ActionEvent e) {
                 // ダブルクリックされた場合、「選択ファイル」をオープンする.
-                onOpenFile(fileTreePanel.getSelectedFile());
+                onOpenFile(fileTreePanel.getSelectedFile(), false);
             }
         };
 
@@ -571,7 +577,8 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
         }
         // ファイル名が変更されたら通知を受け取るようにリスナを設定する.
         internalFrame.addPropertyChangeListener(
-                DocumentInternalFrame.PROPERTY_FILE, new PropertyChangeListener() {
+                DocumentInternalFrame.PROPERTY_FILE,
+                new PropertyChangeListener() {
                     @Override
                     public void propertyChange(PropertyChangeEvent evt) {
                         // ドキュメントのファイル名が変更された場合
@@ -705,8 +712,10 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
      * 
      * @param file
      *            ファイル 、nullの場合は何もしない.
+     * @param forceBinary
+     *            常にバイナリとして開く.
      */
-    protected void onOpenFile(File file) {
+    protected void onOpenFile(File file, boolean forceBinary) {
         if (file == null || !file.exists() || file.isDirectory()) {
             // ファイルが存在しないかディレクトリの場合は何もしない.
             return;
@@ -737,8 +746,14 @@ public class MainFrame extends JFrame implements PassphraseUIProvider {
             return;
         }
 
+        // ドキュメントからMIMEタイプを取得する.
+        // ただし、forceBinaryが指定されていれば常にバイナリとして扱う.
+        String contentType = "application/octent-stream";
+        if (!forceBinary) {
+            contentType = data.getContentType();
+        }
+
         // コンテントタイプによって子フレームのタイプを分ける.
-        String contentType = data.getContentType();
         if (contentType.startsWith("text/")) {
             // テキストデータの場合
             createTextInternalFrame(file, data);

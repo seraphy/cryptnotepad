@@ -797,15 +797,25 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         if (contents == null) {
             // ワークファイルが削除されていた場合はワーキングファイルを閉じたことにする.
             eraseWorkingFile();
+            return;
+        }
 
+        // ワークファイルの内容を暗号化ファイルに格納
+        String contentType = data.getContentType();
+        String documentTitld = data.getDocumentTitle();
+
+        // テキストであればバイナリからテキストに変換する
+        String text = null;
+        if (contentType.startsWith("text/")) {
+            text = new String(contents, getDocuemtnEncodingOrDefault(data));
+        }
+
+        // プロパティの更新
+        this.workingFileLastModified = workingFile.lastModified();
+        this.workingFileSize = workingFile.length();
+        if (text != null) {
+            setData(new ApplicationData(contentType, text, documentTitld));
         } else {
-            // ワークファイルの内容を暗号化ファイルに格納
-            String contentType = data.getContentType();
-            String documentTitld = data.getDocumentTitle();
-
-            // プロパティの更新
-            this.workingFileLastModified = workingFile.lastModified();
-            this.workingFileSize = workingFile.length();
             setData(new ApplicationData(contentType, contents, documentTitld));
         }
     }
@@ -864,6 +874,13 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
 
         // ワーキングファイルに出力
         byte[] content = data.getData();
+        if (content == null) {
+            // テキストの場合はバイナリに変換する.
+            String text = data.getText();
+            if (text != null) {
+                content = text.getBytes(getDocuemtnEncodingOrDefault(data));
+            }
+        }
         documentController.savePlainBinary(workingFile, content);
 
         // ワーキングファイルへの書き出し時点のファイル更新日時とサイズを保存
@@ -873,5 +890,28 @@ public class BinaryInternalFrame extends DocumentInternalFrame {
         // プロパティの更新
         setWorkingFile(workingFile);
         setModified(true);
+    }
+
+    /**
+     * データのMIMEタイプから文字コードを取得する.<br>
+     * バイナリであるか、データが指定されていない場合、もしくは文字コードの指定がない場合は かわりに設定ダイアログで指定された文字コードを返す.<br>
+     * 
+     * @param data
+     *            データ、null可、テキスト・バイナリを問わず
+     * @return 文字コード、もしくはデフォルトの文字コード
+     */
+    protected String getDocuemtnEncodingOrDefault(ApplicationData data) {
+        String encoding = null;
+        if (data != null) {
+            // ドキュメントの指定があれば、そのタイプから文字コードを取得する.(文字コード指定があれば)
+            encoding = documentController
+                    .getTextEncoding(data.getContentType());
+        }
+        if (encoding == null) {
+            // 文字コードの指定がないか、ドキュメントがnullだったか、MIMEタイプがtext/*でなかった場合は
+            // 設定ダイアログで指定された文字コードを用いる.
+            encoding = documentController.getSettingsModel().getEncoding();
+        }
+        return encoding;
     }
 }

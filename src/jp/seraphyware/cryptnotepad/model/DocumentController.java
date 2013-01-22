@@ -437,7 +437,7 @@ public class DocumentController implements SymCipherEventListener {
      *            コンテントタイプ
      * @return 文字コード、もしくはnull
      */
-    protected String getTextEncoding(String contentType) {
+    public String getTextEncoding(String contentType) {
         if (contentType != null && contentType.startsWith("text/")) {
             // 文字コードの取得
             Map<String, String> argMap = parseOptions(contentType);
