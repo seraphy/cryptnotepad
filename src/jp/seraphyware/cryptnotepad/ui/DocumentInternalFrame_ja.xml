@@ -5,5 +5,5 @@
   <entry key="notitled.title">無題</entry>
 
   <entry key="confirm.title">確認</entry>
-  <entry key="confirm.close.unsavedchanges">未保存の変更があります。変更を破棄しますか?</entry>
+  <entry key="confirm.close.saveOnClose">未保存の変更があります。変更を保存しますか?</entry>
 </properties>

@@ -5,5 +5,5 @@
   <entry key="notitled.title">No-Titled</entry>
 
   <entry key="confirm.title">CONFIRM</entry>
-  <entry key="confirm.close.unsavedchanges">You have unsaved changes. Do you want to discard your changes?</entry>
+  <entry key="confirm.close.saveOnClose">You have unsaved changes. Do you want to save?</entry>
 </properties>

@@ -29,6 +29,7 @@ import jp.seraphyware.cryptnotepad.model.ApplicationData;
 import jp.seraphyware.cryptnotepad.model.ApplicationSettings;
 import jp.seraphyware.cryptnotepad.model.DocumentController;
 import jp.seraphyware.cryptnotepad.util.ConfigurationDirUtilities;
+import jp.seraphyware.cryptnotepad.util.ErrorMessageHelper;
 import jp.seraphyware.cryptnotepad.util.XMLResourceBundle;
 
 /**
@@ -168,15 +169,28 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
      */
     protected boolean checkModify() {
         if (isModified()) {
-            String message = resource.getString("confirm.close.unsavedchanges");
+            String message = resource.getString("confirm.close.saveOnClose");
             String title = resource.getString("confirm.title");
             int ret = JOptionPane.showConfirmDialog(this, message, title,
-                    JOptionPane.YES_NO_OPTION);
-            if (ret != JOptionPane.YES_OPTION) {
-                // 破棄しない場合はfalseを返す
-                return false;
+                    JOptionPane.YES_NO_CANCEL_OPTION);
+            if (ret == JOptionPane.YES_OPTION) {
+                // 変更を保存する
+            	try {
+	            	requestSave(false, false);
+	            	requestSave(true, true);
+            	
+            	} catch (Exception ex) {
+                    ErrorMessageHelper.showErrorDialog(this, ex);
+            	}
+            	// 保存済みであれば閉じてよし
+                return !isModified();
+
+            } else if (ret == JOptionPane.CANCEL_OPTION) {
+            	// クローズをキャンセルする.
+            	return false;
             }
         }
+        // 変更されていないか、破棄しても良い.
         return true;
     }
 
@@ -366,21 +380,21 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
     /**
      * ファイルの保存.<br>
      * 
-     * @param createOrUpdate
+     * @param createOnly
      *            新規ファイルのみ作成する場合はtrue、
      * @param modifiedOnly
      *            変更されているもののみ保存する場合はtrue
      * @throws IOException
      *             失敗
      */
-    public void requestSave(boolean createOrUpdate, boolean modifiedOnly)
+    public void requestSave(boolean createOnly, boolean modifiedOnly)
             throws IOException {
         if (modifiedOnly && !isModified()) {
             // 変更ファイルのみ保存する場合、変更されてなければ何もしない.
             return;
         }
 
-        if (createOrUpdate) {
+        if (createOnly) {
             // 新規保存の場合はファイルが存在しないものだけを保存する.
             if (!isExistFile()) {
                 saveAs();
