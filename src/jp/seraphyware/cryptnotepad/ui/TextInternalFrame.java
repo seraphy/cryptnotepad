@@ -254,6 +254,9 @@ public class TextInternalFrame extends DocumentInternalFrame {
         JButton btnSave = new JButton(actSave);
         btnSave.setToolTipText(resource.getString("save.button.tooltip"));
         btnPanel.add(btnSave);
+        
+        // ドラッグハンドル用の余白
+        btnPanel.add(Box.createHorizontalStrut(24));
 
         // スプリットペイン
         this.splt = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, true);

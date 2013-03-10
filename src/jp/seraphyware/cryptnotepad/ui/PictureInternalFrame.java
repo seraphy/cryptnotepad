@@ -99,6 +99,7 @@ public class PictureInternalFrame extends DocumentInternalFrame {
 
         btnPanel.add(Box.createHorizontalGlue());
 
+        // Exportボタン
         JButton btnExport = new JButton(new AbstractAction(
                 resource.getString("export.button.title")) {
             private static final long serialVersionUID = 1L;
@@ -110,10 +111,14 @@ public class PictureInternalFrame extends DocumentInternalFrame {
         });
         btnExport.setToolTipText(resource.getString("export.button.tooltip"));
         btnPanel.add(btnExport);
-
+        
+        // 保存ボタン
         JButton btnSave = new JButton(actSave);
         btnSave.setToolTipText(resource.getString("save.button.tooltip"));
         btnPanel.add(btnSave);
+
+        // ドラッグハンドル用の余白
+        btnPanel.add(Box.createHorizontalStrut(24));
 
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());

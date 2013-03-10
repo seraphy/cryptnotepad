@@ -99,6 +99,9 @@ public abstract class DocumentInternalFrame extends JInternalFrame {
             dispose();
             throw new IllegalArgumentException();
         }
+        
+        // Mac用のL&F
+        putClientProperty("JInternalFrame.frameType", "normal");
 
         // 閉じるイベントのハンドリング
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
