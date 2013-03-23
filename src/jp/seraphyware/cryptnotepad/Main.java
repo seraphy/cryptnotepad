@@ -16,6 +16,7 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
@@ -211,6 +212,25 @@ public class Main implements Runnable {
     }
 
     /**
+     * Javaの簡易なバージョンを取得する.<br>
+     * 不明な場合は0を返す.<br>
+     * 
+     * @return バージョン
+     */
+    private static double getJavaVersion() {
+        try {
+            String version = System.getProperty("java.version");
+            String[] versions = version.split("\\.");
+            if (versions.length > 2) {
+                return Double.valueOf(versions[0] + "." + versions[1]);
+            }
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+        }
+        return 0d;
+    }
+
+    /**
      * 初期処理およびメインフレームを構築する.<br>
      * SwingのUIスレッドで実行される.<br>
      */
@@ -234,6 +254,20 @@ public class Main implements Runnable {
                 // UIManagerの設定に失敗した場合はログに書いて継続する.
                 ex.printStackTrace();
                 logger.log(Level.WARNING, "UIManager setup failed.", ex);
+            }
+
+            // LANG, LC_CTYPEが設定されていない場合はエラーを表示する
+            // OSXのJava7(Oracle)を実行する場合、環境変数LANGまたはLC_CTYPEに正しくファイル名の文字コードが設定されていないと
+            // ファイル名を正しく取り扱えず文字化けするため、実行前に確認し警告を表示する。
+            if (isMacOSX() && getJavaVersion() >= 1.7) {
+                String lang = System.getenv("LANG");
+                String lcctype = System.getenv("LC_CTYPE");
+                if ((lang == null || lang.trim().length() == 0)
+                        && (lcctype == null || lcctype.trim().length() == 0)) {
+                    JOptionPane.showMessageDialog(null,
+                            "\"LANG\" environment variable is not set!.",
+                            "Configuration Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
 
             // MainFrameの表示
