@@ -44,7 +44,11 @@ public abstract class ErrorMessageHelper {
             }
 
             // ログに記録する.
-            logger.log(Level.SEVERE, ex.getLocalizedMessage(), ex);
+            String msg = ex.getLocalizedMessage();
+            if (msg == null || msg.isEmpty()) {
+                msg = ex.toString();
+            }
+            logger.log(Level.SEVERE, msg, ex);
 
             // 例外を表示するパネルの生成
             JTextArea textArea = new JTextArea();
@@ -81,14 +85,16 @@ public abstract class ErrorMessageHelper {
                 return;
             }
 
-            // ログに記録する.
-            logger.log(Level.WARNING, ex.getLocalizedMessage(), ex);
-
-            // ダイアログの表示
+            // エラーメッセージの取得
             String msg = ex.getLocalizedMessage();
             if (msg == null || msg.length() == 0) {
                 msg = ex.toString();
             }
+
+            // ログに記録する.
+            logger.log(Level.WARNING, msg, ex);
+
+            // ダイアログの表示
             JOptionPane.showMessageDialog(parent, msg, "ERROR",
                     JOptionPane.WARNING_MESSAGE);
         }
